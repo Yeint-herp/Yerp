@@ -1,0 +1,97 @@
+#ifndef PAIR_KTL
+#define PAIR_KTL
+
+#include <ktl/type_traits>
+
+namespace ktl {
+
+template<class T1, class T2>
+struct pair {
+    using first_type  = T1;
+    using second_type = T2;
+
+    T1 first;
+    T2 second;
+
+    constexpr pair()
+      : first(), second() {}
+
+    constexpr pair(const pair&) = default;
+    constexpr pair(pair&&)      = default;
+
+    constexpr pair(const T1& x, const T2& y)
+      : first(x), second(y) {}
+
+    template<
+      class U1, class U2,
+      class = enable_if_t<
+        is_convertible_v<U1&&, T1> &&
+        is_convertible_v<U2&&, T2>
+      >
+    >
+    constexpr pair(U1&& x, U2&& y)
+      : first(ktl::forward<U1>(x))
+      , second(ktl::forward<U2>(y))
+    {}
+
+    template<
+      class U1, class U2,
+      class = enable_if_t<
+        is_convertible_v<const U1&, T1> &&
+        is_convertible_v<const U2&, T2>
+      >
+    >
+    constexpr pair(const pair<U1, U2>& p)
+      : first(p.first), second(p.second)
+    {}
+
+    pair& operator=(const pair&) = default;
+    pair& operator=(pair&&)      = default;
+
+    void swap(pair& o) noexcept {
+        ktl::swap(first,  o.first);
+        ktl::swap(second, o.second);
+    }
+};
+
+template<class T1, class T2>
+constexpr bool operator==(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return a.first == b.first && a.second == b.second;
+}
+template<class T1, class T2>
+constexpr bool operator!=(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return !(a == b);
+}
+template<class T1, class T2>
+constexpr bool operator<(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return (a.first < b.first) ||
+           (!(b.first < a.first) && a.second < b.second);
+}
+template<class T1, class T2>
+constexpr bool operator>(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return b < a;
+}
+template<class T1, class T2>
+constexpr bool operator<=(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return !(b < a);
+}
+template<class T1, class T2>
+constexpr bool operator>=(const pair<T1,T2>& a, const pair<T1,T2>& b) {
+    return !(a < b);
+}
+
+template<class U1, class U2>
+constexpr pair<U1,U2> make_pair(U1&& x, U2&& y) {
+    return pair<U1,U2>(
+      ktl::forward<U1>(x),
+      ktl::forward<U2>(y)
+    );
+}
+
+template<typename T> struct is_pair : ktl::false_type {};
+template<typename T1, typename T2> struct is_pair<ktl::pair<T1, T2>> : ktl::true_type {};
+template<typename T> inline constexpr bool is_pair_v = is_pair<T>::value;
+
+} // namespace ktl
+
+#endif //PAIR_KTL

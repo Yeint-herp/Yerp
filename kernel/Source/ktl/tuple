@@ -1,0 +1,85 @@
+#ifndef KTL_TUPLE_HH
+#define KTL_TUPLE_HH
+
+#include <ktl/type_traits>
+
+namespace ktl {
+
+template<typename... Ts>
+struct Tuple;
+
+template<>
+struct Tuple<> {
+    constexpr Tuple() noexcept {}
+};
+
+template<typename Head, typename... Tail>
+struct Tuple<Head, Tail...> {
+    Head value;
+    Tuple<Tail...> rest;
+
+    template<typename H, typename... T>
+    constexpr Tuple(H&& h, T&&... t)
+        : value(ktl::forward<H>(h)), rest(ktl::forward<T>(t)...) {}
+
+};
+
+template<usize Index, typename TupleT>
+struct TupleElement;
+
+template<typename Head, typename... Tail>
+struct TupleElement<0, Tuple<Head, Tail...>> {
+    using type = Head;
+    static constexpr Head& get(Tuple<Head, Tail...>& t) noexcept { return t.value; }
+    static constexpr const Head& get(const Tuple<Head, Tail...>& t) noexcept { return t.value; }
+};
+
+template<usize Index, typename Head, typename... Tail>
+struct TupleElement<Index, Tuple<Head, Tail...>> {
+    using type = typename TupleElement<Index - 1, Tuple<Tail...>>::type;
+    static constexpr type& get(Tuple<Head, Tail...>& t) noexcept {
+        return TupleElement<Index - 1, Tuple<Tail...>>::get(t.rest);
+    }
+    static constexpr const type& get(const Tuple<Head, Tail...>& t) noexcept {
+        return TupleElement<Index - 1, Tuple<Tail...>>::get(t.rest);
+    }
+};
+
+template<usize I, typename... Ts>
+constexpr auto& get(Tuple<Ts...>& t) noexcept {
+    return TupleElement<I, Tuple<Ts...>>::get(t);
+}
+
+template<usize I, typename... Ts>
+constexpr const auto& get(const Tuple<Ts...>& t) noexcept {
+    return TupleElement<I, Tuple<Ts...>>::get(t);
+}
+
+template<typename... Ts>
+constexpr Tuple<Ts...> make_tuple(Ts&&... args) {
+    return Tuple<Ts...>(static_cast<Ts&&>(args)...);
+}
+
+template<typename T>
+struct TupleSize;
+
+template<typename... Ts>
+struct TupleSize<Tuple<Ts...>> : ktl::integral_constant<usize, sizeof...(Ts)> {};
+
+template<typename T>
+inline constexpr usize TupleSize_v = TupleSize<T>::value;
+
+template<usize I, typename T>
+struct TupleElementType;
+
+template<usize I, typename... Ts>
+struct TupleElementType<I, Tuple<Ts...>> {
+    using type = typename TupleElement<I, Tuple<Ts...>>::type;
+};
+
+template<usize I, typename T>
+using TupleElementType_t = typename TupleElementType<I, T>::type;
+
+} // namespace ktl
+
+#endif // KTL_TUPLE_HH

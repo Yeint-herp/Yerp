@@ -1,0 +1,164 @@
+#ifndef ATOMIC_KTL
+#define ATOMIC_KTL
+
+namespace ktl {
+
+    template<typename T>
+    class atomic {
+        static_assert(sizeof(T) == 4 || sizeof(T) == 8,
+                    "ktl::atomic<T> only supports 32- and 64-bit types");
+    public:
+        constexpr atomic() noexcept : _value(0) {}
+        constexpr atomic(T desired) noexcept : _value(desired) {}
+        atomic(const atomic&) = delete;
+        atomic& operator=(const atomic&) = delete;
+
+        T load() const noexcept {
+            T tmp;
+            asm volatile (""        ::: "memory");
+            if constexpr (sizeof(T) == 4) {
+                asm volatile ("movl %1, %0"
+                            : "=r"(tmp)
+                            : "m"(_value)
+                            : "memory");
+            } else {
+                asm volatile ("movq %1, %0"
+                            : "=r"(tmp)
+                            : "m"(_value)
+                            : "memory");
+            }
+            asm volatile (""        ::: "memory");
+            return tmp;
+        }
+
+        void store(T desired) noexcept {
+            asm volatile (""        ::: "memory");
+            if constexpr (sizeof(T) == 4) {
+                asm volatile ("movl %1, %0"
+                            : "=m"(_value)
+                            : "r"(desired)
+                            : "memory");
+            } else {
+                asm volatile ("movq %1, %0"
+                            : "=m"(_value)
+                            : "r"(desired)
+                            : "memory");
+            }
+            asm volatile (""        ::: "memory");
+        }
+
+        T exchange(T desired) noexcept {
+            if constexpr (sizeof(T) == 4) {
+                asm volatile ("lock xchgl %0, %1"
+                            : "+r"(desired), "+m"(_value)
+                            :
+                            : "memory");
+            } else {
+                asm volatile ("lock xchgq %0, %1"
+                            : "+r"(desired), "+m"(_value)
+                            :
+                            : "memory");
+            }
+            return desired;
+        }
+
+        bool compare_exchange_strong(T& expected, T desired) noexcept {
+            T prev = expected;
+            if constexpr (sizeof(T) == 4) {
+                asm volatile ("lock cmpxchgl %2, %1"
+                            : "=a"(prev), "+m"(_value)
+                            : "r"(desired), "0"(prev)
+                            : "memory");
+            } else {
+                asm volatile ("lock cmpxchgq %2, %1"
+                            : "=a"(prev), "+m"(_value)
+                            : "r"(desired), "0"(prev)
+                            : "memory");
+            }
+            if (prev == expected) {
+                return true;
+            } else {
+                expected = prev;
+                return false;
+            }
+        }
+
+        T fetch_add(T arg) noexcept {
+            if constexpr (sizeof(T) == 4) {
+                asm volatile ("lock xaddl %0, %1"
+                            : "+r"(arg), "+m"(_value)
+                            :
+                            : "memory");
+            } else {
+                asm volatile ("lock xaddq %0, %1"
+                            : "+r"(arg), "+m"(_value)
+                            :
+                            : "memory");
+            }
+            return arg;
+        }
+
+        T fetch_sub(T arg) noexcept {
+            return fetch_add(static_cast<T>(-arg));
+        }
+
+    private:
+        alignas(sizeof(T)) volatile T _value;
+    };
+
+    using atomic_u32 = atomic<uint32_t>;
+    using atomic_u64 = atomic<uint64_t>;
+
+    class SpinLock {
+        alignas(1) volatile uint8_t _flag = 0;
+
+    public:
+        void lock() noexcept {
+            uint8_t tmp = 1;
+            for (;;) {
+                asm volatile ("lock xchg %0, %1"
+                            : "+r"(tmp), "+m"(_flag)
+                            :
+                            : "memory");
+                if (tmp == 0)
+                    return;
+                tmp = 1;
+            }
+        }
+
+        bool try_lock() noexcept {
+            uint8_t tmp = 1;
+            asm volatile ("lock xchg %0, %1"
+                        : "+r"(tmp), "+m"(_flag)
+                        :
+                        : "memory");
+            return tmp == 0;
+        }
+
+        void unlock() noexcept {
+            asm volatile ("" ::: "memory");
+            _flag = 0;
+            asm volatile ("" ::: "memory");
+        }
+    };
+
+    template<typename Lock>
+    class AutoLock {
+        Lock& _lock;
+    public:
+        explicit AutoLock(Lock& l) noexcept
+            : _lock(l)
+        {
+            _lock.lock();
+        }
+        ~AutoLock() noexcept {
+            _lock.unlock();
+        }
+
+        AutoLock(const AutoLock&) = delete;
+        AutoLock& operator=(const AutoLock&) = delete;
+    };
+
+}
+
+#endif //ATOMIC_KTL

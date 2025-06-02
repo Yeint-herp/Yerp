@@ -1,0 +1,8 @@
+build
+.cache
+limine
+ovmf
+deps
+Yerp-*
+kernel/std
+compile_commands.json

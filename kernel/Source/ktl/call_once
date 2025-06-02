@@ -1,0 +1,41 @@
+#ifndef CALL_ONCE_KTL
+#define CALL_ONCE_KTL
+
+#include <arch/io.hh>
+#include <ktl/type_traits>
+
+namespace ktl {
+
+struct once_flag {
+    alignas(int) volatile int _state = 0;
+};
+
+template<class Callable, class... Args>
+void call_once(once_flag &flag,
+               Callable&& func,
+               Args&&... args)
+{
+    if (__atomic_load_n(&flag._state, __ATOMIC_ACQUIRE) == 2)
+        return;
+
+    int expected = 0;
+    if (__atomic_compare_exchange_n(&flag._state,
+                                   &expected,
+                                   1,
+                                   /*strong=*/false,
+                                   __ATOMIC_ACQUIRE,
+                                   __ATOMIC_RELAXED))
+    {
+        ktl::forward<Callable>(func)(ktl::forward<Args>(args)...);
+        __atomic_store_n(&flag._state, 2, __ATOMIC_RELEASE);
+    }
+    else {
+        while (__atomic_load_n(&flag._state, __ATOMIC_ACQUIRE) != 2) {
+            io::pause();
+        }
+    }
+}
+
+} // namespace ktl
+
+#endif // CALL_ONCE_KTL

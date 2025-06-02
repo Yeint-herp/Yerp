@@ -1,0 +1,18 @@
+#ifndef ASSERT_KTL
+#define ASSERT_KTL
+
+namespace ktl {
+
+[[noreturn]] void assertion_failure(const char* expr,
+                                           const char* file,
+                                           int         line);
+
+} // namespace ktl
+
+#define assert(_cond_)                                     \
+    do {                                                       \
+        if (!(_cond_))                                         \
+            ::ktl::assertion_failure(#_cond_, __FILE__, __LINE__); \
+    } while (0)
+
+#endif // ASSERT_KTL

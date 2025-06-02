@@ -1,0 +1,191 @@
+#ifndef SLICE_KTL
+#define SLICE_KTL
+
+#include <ktl/initializer_list>
+#include <ktl/string_view>
+#include <ktl/assert>
+
+namespace ktl {
+
+static constexpr usize dynamic_extent = static_cast<usize>(-1);
+
+template<typename T, usize Extent = dynamic_extent>
+class slice {
+public:
+    using element_type    = T;
+    using value_type      = remove_cv_t<T>;
+    using size_type       = usize;
+    using pointer         = T*;
+    using reference       = T&;
+    using iterator        = pointer;
+    using const_iterator  = const T*;
+
+    static constexpr size_type extent = Extent;
+
+private:
+    pointer     m_data;
+    size_type   m_size;
+
+public:
+    constexpr slice() noexcept
+        : m_data(nullptr), m_size(0) {}
+
+    constexpr slice(pointer ptr, size_type count) noexcept
+        : m_data(ptr), m_size(count)
+    {
+        if constexpr (Extent != dynamic_extent) {
+            assert(count == Extent && "ktl::slice: count must match static extent");
+        }
+    }
+
+    constexpr slice(pointer first, pointer last) noexcept
+        : m_data(first), m_size(last - first) {}
+
+    template <size_type N>
+    constexpr slice(T (&arr)[N]) noexcept
+        : m_data(arr), m_size(N)
+    {
+        static_assert(Extent == dynamic_extent || N == Extent,
+                      "ktl::slice: array size must match static extent");
+    }
+
+    constexpr slice(ktl::initializer_list<value_type> il) noexcept
+        : m_data(const_cast<pointer>(il.begin())), m_size(il.size())
+    {
+        static_assert(Extent == dynamic_extent || il.size() == Extent,
+                      "ktl::slice: initializer_list size must match static extent");
+    }
+
+    template<typename U = T,
+         typename = ktl::enable_if_t<
+             ktl::is_same_v<U, char> || ktl::is_same_v<U, const char>
+         >>
+constexpr slice(ktl::string_view sv) noexcept
+    : m_data(sv.data()), m_size(sv.size()) {}
+
+    template<usize E = Extent>
+    constexpr operator ktl::enable_if_t<
+        E==dynamic_extent || E>=0,
+        ktl::string_view
+    >() const noexcept
+    {
+        static_assert(ktl::is_same_v<value_type, char> ||
+                    ktl::is_same_v<value_type, const char>,
+                    "slice -> string_view only for (const) char slices");
+        return { m_data, m_size };
+    }
+
+    constexpr slice& operator=(const slice& other) noexcept {
+        if constexpr (Extent != dynamic_extent) {
+            static_assert(Extent == dynamic_extent, "Cannot assign to fixed-extent slice with different size.");
+            assert(other.size() == Extent && "Assigned slice must have same extent.");
+        }
+        m_data = other.m_data;
+        m_size = other.m_size;
+        return *this;
+    }
+
+    template<typename U, usize OtherExtent>
+    constexpr slice& operator=(const slice<U, OtherExtent>& other) noexcept {
+        static_assert(is_convertible_v<U (*)[], T (*)[]>,
+                    "Cannot assign slice of incompatible type");
+        if constexpr (Extent != dynamic_extent) {
+            static_assert(OtherExtent == Extent,
+                        "Cannot assign to fixed-extent slice with mismatched extent");
+            assert(other.size() == Extent && "Assigned slice must have same extent");
+        }
+        m_data = other.data();
+        m_size = other.size();
+        return *this;
+    }
+    
+    template<typename U, usize OtherExtent,
+             typename = enable_if_t<is_convertible_v<U (*)[], T (*)[]>>,
+             typename = enable_if_t<Extent == dynamic_extent || OtherExtent == Extent>>
+    constexpr slice(const slice<U, OtherExtent>& other) noexcept
+        : m_data(other.data()), m_size(other.size()) {}
+
+    constexpr pointer       data()  const noexcept { return m_data; }
+    constexpr size_type     size()  const noexcept { return m_size; }
+    constexpr bool          empty() const noexcept { return m_size == 0; }
+
+    constexpr reference operator[](size_type i) const noexcept { return m_data[i]; }
+    constexpr reference front() const noexcept { return m_data[0]; }
+    constexpr reference back()  const noexcept { return m_data[m_size - 1]; }
+
+    constexpr iterator begin()  const noexcept { return m_data; }
+    constexpr iterator end()    const noexcept { return m_data + m_size; }
+    constexpr const_iterator cbegin() const noexcept { return begin(); }
+    constexpr const_iterator cend()   const noexcept { return end(); }
+
+    constexpr slice<T, dynamic_extent> subslice(size_type offset, size_type count = dynamic_extent) const noexcept {
+        size_type avail = size() > offset ? size() - offset : 0;
+        size_type len = (count == dynamic_extent || count > avail) ? avail : count;
+        return { data() + offset, len };
+    }
+
+    constexpr slice<T, dynamic_extent> first(size_type n) const noexcept {
+        return subslice(0, n);
+    }
+
+    constexpr slice<T, dynamic_extent> last(size_type n) const noexcept {
+        return subslice(size() - n, n);
+    }
+
+    constexpr void remove_prefix(size_type n) noexcept {
+        if (n > m_size) n = m_size;
+        m_data += n;
+        m_size -= n;
+    }
+
+    constexpr void remove_suffix(size_type n) noexcept {
+        if (n > m_size) n = m_size;
+        m_size -= n;
+    }
+
+    constexpr slice<const unsigned char> as_bytes() const noexcept {
+        return {
+            reinterpret_cast<const unsigned char*>(m_data),
+            m_size * sizeof(T)
+        };
+    }
+
+    template<typename U = T,
+            typename = ktl::enable_if_t<!ktl::is_const_v<U>>>
+    constexpr slice<unsigned char> as_writable_bytes() const noexcept {
+        return {
+            reinterpret_cast<unsigned char*>(m_data),
+            m_size * sizeof(T)
+        };
+    }
+
+    template<typename U = T,
+         typename = ktl::enable_if_t<
+             ktl::is_same_v<U, char> || ktl::is_same_v<U, const char>
+         >>
+    constexpr const char* c_str() const noexcept {
+        return m_data;
+    }
+};
+
+template<typename T, usize N>
+constexpr bool operator==(slice<T, N> a, slice<T, N> b) noexcept {
+    if (a.size() != b.size()) return false;
+    for (usize i = 0; i < a.size(); ++i) {
+        if (a[i] != b[i]) return false;
+    }
+    return true;
+}
+
+template<typename T, usize N>
+constexpr bool operator!=(slice<T, N> a, slice<T, N> b) noexcept {
+    return !(a == b);
+}
+
+template<typename T> struct is_slice : ktl::false_type {};
+template<typename T, usize N> struct is_slice<ktl::slice<T, N>> : ktl::true_type {};
+template<typename T> inline constexpr bool is_slice_v = is_slice<T>::value;
+
+} // namespace ktl
+
+#endif //SLICE_KTL
