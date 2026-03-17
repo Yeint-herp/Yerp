@@ -6,10 +6,10 @@ typedef unsigned short u16;
 typedef unsigned int   u32;
 typedef unsigned long  u64;
 
-typedef signed char	 i8;
+typedef signed char  i8;
 typedef signed short i16;
-typedef signed int	 i32;
-typedef signed long	 i64;
+typedef signed int   i32;
+typedef signed long  i64;
 
 typedef u64 usize;
 typedef i64 isize;
@@ -20,6 +20,10 @@ typedef isize iptr;
 typedef uptr paddr_t;
 typedef uptr vaddr_t;
 
-#define unreachable() __builtin_unreachable()
+#define unreachable()  __builtin_unreachable()
+#define ArraySize(arr) sizeof(arr) / sizeof(*arr)
+
+#define Bit_FirstSetIndex(x)   __builtin_ctz(x)
+#define Bit_FirstClearIndex(x) Bit_FirstSetIndex(~x)
 
 #endif /* SUPERVISOR_CONST_H */
