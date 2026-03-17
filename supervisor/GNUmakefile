@@ -31,7 +31,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -ffreestanding -fno-stack-check -fstack-protector-strong \
                  -fno-pic -fno-omit-frame-pointer -fwrapv -fdollars-in-identifiers \
                  -Wvla -Wshadow \
-                 -I. -Isource -include const.h \
+                 -isystem. -isystemsource -include const.h \
                  $(ARCH_CFLAGS) -DkArch=$(ARCH)
 
 ifeq ($(MODE),debug)
