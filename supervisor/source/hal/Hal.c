@@ -6,23 +6,23 @@
 void Hal_InitializeEarly()
 {
     Dbg_RegisterSinker(g_RingBufSinker);
-    Dbg_Log(TRACE, "hal", "early ring buffer sinker ready");
+    Dbg_Log(TRACE, "Hal", "early ring buffer sinker ready");
 
     if (kArch == x86_64)
         Dbg_RegisterSinker(g_e9Sinker);
 
     Arch_CpuCapInit();
-    Dbg_Log(TRACE, "hal", "queried cpu capabilities");
+    Dbg_Log(TRACE, "Hal", "queried cpu capabilities");
 
     Arch_RngInit();
     const Arch_RngSource rngSource = Arch_RngGetSource();
     if (rngSource == RNG_SRC_NONE)
-        Dbg_Log(ERROR, "hal", "no hrng available");
+        Dbg_Log(ERROR, "Hal", "no hrng available");
     else
-        Dbg_Log(TRACE, "hal", "initialized hrng using %s",
+        Dbg_Log(TRACE, "Hal", "initialized hrng using %s",
                 (rngSource == RNG_SRC_RDSEED)   ? "hardware RdSeed"
                 : (rngSource == RNG_SRC_RDRAND) ? "hardware RndRand"
                                                 : "hardware TSC");
 
-    Dbg_Log(INFO, "hal", "early initialization done");
+    Dbg_Log(INFO, "Hal", "early initialization done");
 }
