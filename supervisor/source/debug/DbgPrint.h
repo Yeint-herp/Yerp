@@ -44,13 +44,11 @@ Dbg_SinkerMask Dbg_RegisterSinker(Dbg_Sinker sinker);
 
 void Dbg_PurgeSinkers(Dbg_SinkerMask);
 
-[[gnu::format(printf, 1, 2)]] void Dbg_Print(const char *fmt, ...);
-[[gnu::format(printf, 1, 3)]] void Dbg_PrintEx(const char *fmt, Dbg_SinkerMask mask, ...);
+void Dbg_Print(const char *fmt, ...);
+void Dbg_PrintEx(const char *fmt, Dbg_SinkerMask mask, ...);
 
-[[gnu::format(printf, 3, 4)]]
 void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...);
 
-[[gnu::format(printf, 3, 4)]]
 usize Dbg_BufferPrint(char *buf, usize size, const char *fmt, ...);
 
 void Dbg_FmtChar(Dbg_FmtContext *ctx, char c);
