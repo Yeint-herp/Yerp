@@ -38,7 +38,7 @@ CURL := curl
 DEPS_DIR := deps
 LIMINE_DIR := $(DEPS_DIR)/limine
 LIMINE_REPO := https://github.com/limine-bootloader/limine.git
-LIMINE_BRANCH := v8.x-binary
+LIMINE_BRANCH := v10.x-binary
 
 OVMF_DIR := $(DEPS_DIR)/ovmf
 OVMF_CODE := $(OVMF_DIR)/OVMF_CODE.fd
@@ -66,7 +66,6 @@ hdd: supervisor deps
 	@$(DD) if=/dev/zero bs=1M count=64 of=$(HDD_IMG) status=none
 	@$(SGDISK) $(HDD_IMG) -n 1:2048 -t 1:ef00 -c 1:"EFI System" > /dev/null
 	@$(MFORMAT) -i $(HDD_IMG)@@1M
-	@$(LIMINE_DIR)/limine bios-install $(HDD_IMG)
 	@$(MMD) -i $(HDD_IMG)@@1M ::/EFI ::/EFI/BOOT ::/boot
 	@$(MCOPY) -i $(HDD_IMG)@@1M $(SUPERVISOR_ELF) ::/boot/supervisor
 	@$(MCOPY) -i $(HDD_IMG)@@1M limine.conf ::/boot/limine.conf
@@ -113,4 +112,4 @@ clean:
 	@rm -rf $(BUILD_DIR)
 
 distclean:
-	@rm -rf $(BUILD_ROOT)
+	@rm -rf $(BUILD_ROOT) $(DEPS_DIR)
