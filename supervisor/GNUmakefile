@@ -4,8 +4,6 @@ MAKEFLAGS += --no-builtin-rules --no-print-directory
 MODE ?= debug
 ARCH ?= x86_64
 
-ARCH_MACRO := $(shell echo $(ARCH) | tr a-z A-Z)
-
 TARGET_ASM := x86_64-unknown-none
 TARGET_CC := x86_64-unknown-none-elf
 
@@ -34,7 +32,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -fno-pic -fno-omit-frame-pointer -fwrapv -fdollars-in-identifiers \
                  -Wvla -Wshadow \
                  -I. -Isource -include const.h \
-                 $(ARCH_CFLAGS) -DARCH_$(ARCH_MACRO)
+                 $(ARCH_CFLAGS) -DkArch=$(ARCH)
 
 ifeq ($(MODE),debug)
     CFLAGS_MODE := -O0 -g3
