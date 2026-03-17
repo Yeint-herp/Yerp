@@ -7,8 +7,8 @@
 .global Hal_HaltCatchFire
 
 Supervisor_SystemStartup:
-    call Core_StackGuardInit
     call Hal_InitializeEarly
+    call Core_StackGuardInit
 
 Hal_HaltCatchFire:
     cli
