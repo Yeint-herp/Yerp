@@ -23,3 +23,26 @@ void Core_SpinlockRelease(Core_Spinlock *lock)
 {
     Arch_AtomicStore32(&lock->State, SPINLOCK_FREE);
 }
+
+Arch_IrqFlags Core_SpinlockAcquireIrq(Core_Spinlock *lock)
+{
+    Arch_IrqFlags flags = Arch_IrqSave();
+    Core_SpinlockAcquire(lock);
+    return flags;
+}
+
+void Core_SpinlockReleaseIrq(Core_Spinlock *lock, Arch_IrqFlags flags)
+{
+    Core_SpinlockRelease(lock);
+    Arch_IrqRestore(flags);
+}
+
+bool Core_SpinlockTryAcquireIrq(Core_Spinlock *lock, Arch_IrqFlags *flags)
+{
+    *flags = Arch_IrqSave();
+    if (Core_SpinlockTryAcquire(lock))
+        return true;
+
+    Arch_IrqRestore(*flags);
+    return false;
+}
