@@ -1,5 +1,5 @@
-#ifndef SUPERVISOR_DBGPRINT_H
-#define SUPERVISOR_DBGPRINT_H
+#ifndef SUPERVISOR_DEBUG_DBGPRINT_H
+#define SUPERVISOR_DEBUG_DBGPRINT_H
 
 #include <core/VarArg.h>
 
@@ -70,4 +70,4 @@ void Dbg_FmtFlush(Dbg_FmtContext *ctx);
 #define Log(level, fmt, ...) static_assert(0, "Log(level, fmt, ...) requires DBG_MODULE set!")
 #endif
 
-#endif /* SUPERVISOR_DBGPRINT_H */
+#endif /* SUPERVISOR_DEBUG_DBGPRINT_H */
