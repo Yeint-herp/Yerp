@@ -1,28 +1,44 @@
+#define DBG_MODULE "Hal"
+
 #include <arch/CpuCap.h>
 #include <arch/Rng.h>
+#include <boot/Limine.h>
 #include <debug/DbgPrint.h>
 #include <hal/Hal.h>
+#include <mm/Early.h>
+#include <mm/MemMap.h>
 
 void Hal_InitializeEarly()
 {
     Dbg_RegisterSinker(g_RingBufSinker);
-    Dbg_Log(TRACE, "Hal", "early ring buffer sinker ready");
+    Log(TRACE, "early ring buffer sinker ready");
 
     if (kArch == x86_64)
         Dbg_RegisterSinker(g_e9Sinker);
 
     Arch_CpuCapInit();
-    Dbg_Log(TRACE, "Hal", "queried cpu capabilities");
+    Log(TRACE, "queried cpu capabilities");
 
     Arch_RngInit();
     const Arch_RngSource rngSource = Arch_RngGetSource();
     if (rngSource == RNG_SRC_NONE)
-        Dbg_Log(ERROR, "Hal", "no hrng available");
+        Log(ERROR, "no hrng available");
     else
-        Dbg_Log(TRACE, "Hal", "initialized hrng using %s",
-                (rngSource == RNG_SRC_RDSEED)   ? "hardware RdSeed"
-                : (rngSource == RNG_SRC_RDRAND) ? "hardware RndRand"
-                                                : "hardware TSC");
+        Log(TRACE, "initialized hrng using %s",
+            (rngSource == RNG_SRC_RDSEED)   ? "hardware RdSeed"
+            : (rngSource == RNG_SRC_RDRAND) ? "hardware RndRand"
+                                            : "hardware TSC");
 
-    Dbg_Log(INFO, "Hal", "early initialization done");
+    if (!LIMINE_BASE_REVISION_SUPPORTED(Boot_LimineBaseRevision) || !Boot_LimineMemmapReq.response ||
+        !Boot_LimineHhdmReq.response)
+    {
+        Log(FATAL, "critical bootloader requests not fulfilled");
+
+        Hal_HaltCatchFire();
+    }
+    Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
+
+    Mm_DumpMemMap(Mm_GetKernelMemMap());
+
+    Log(INFO, "early initialization done");
 }
