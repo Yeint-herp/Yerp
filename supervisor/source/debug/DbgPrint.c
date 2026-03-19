@@ -499,6 +499,25 @@ void Dbg_FmtVprintf(Dbg_FmtContext *ctx, const char *fmt, Core_VarArgs ap)
                     unit++;
                 }
 
+                u32 digits = 1;
+                u64 temp   = whole;
+                while (temp >= 10)
+                {
+                    digits++;
+                    temp /= 10;
+                }
+
+                u32 total_len = digits;
+                if (unit > 0 && frac > 0)
+                    total_len += 2;
+
+                total_len += 1;
+                total_len += (unit == 0) ? 1 : 3;
+
+                if (!spec.leftAlign)
+                    for (u32 i = total_len; i < spec.width; i++)
+                        Dbg_FmtChar(ctx, ' ');
+
                 s_FmtUnsigned(ctx, whole, 10, false, 0, ' ', false);
 
                 if (unit > 0 && frac > 0)
@@ -512,6 +531,10 @@ void Dbg_FmtVprintf(Dbg_FmtContext *ctx, const char *fmt, Core_VarArgs ap)
                 const char *suf = suffixes[unit];
                 while (*suf)
                     Dbg_FmtChar(ctx, *suf++);
+
+                if (spec.leftAlign)
+                    for (u32 i = total_len; i < spec.width; i++)
+                        Dbg_FmtChar(ctx, ' ');
 
                 break;
             }
