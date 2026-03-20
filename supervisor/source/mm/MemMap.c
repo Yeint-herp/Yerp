@@ -44,7 +44,7 @@ void Mm_DumpMemMap(const Mm_KernelMemMap *map)
 
         u64 top = reg->Base + reg->Length;
 
-        Log(INFO, "[%02zu] %#018llx - %#018llx | Size: %-8zZ | %-25s", i, reg->Base, top, reg->Length,
+        Log(TRACE, "[%02zu] %#018llx - %#018llx | Size: %-8zZ | %-25s", i, reg->Base, top, reg->Length,
             Mm_GetRegionTypeString(reg->Type));
     }
 }

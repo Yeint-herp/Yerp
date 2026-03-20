@@ -150,6 +150,9 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
         if (reg->Type != MEM_TYPE_USABLE)
             continue;
 
+        if (reg->Length < size)
+            continue;
+
         u64 regTop      = reg->Base + reg->Length;
         u64 alignedBase = (regTop - size) & ~(alignment - 1);
 
