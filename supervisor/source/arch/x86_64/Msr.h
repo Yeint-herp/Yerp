@@ -1,0 +1,17 @@
+#ifndef SUPERVISOR_ARCH_X86_64_MSR_H
+#define SUPERVISOR_ARCH_X86_64_MSR_H
+
+#define X86_64_MSR_APIC_BASE      0x0000001B
+#define X86_64_MSR_EFER           0xC0000080
+#define X86_64_MSR_STAR           0xC0000081
+#define X86_64_MSR_LSTAR          0xC0000082
+#define X86_64_MSR_CSTAR          0xC0000083
+#define X86_64_MSR_FMASK          0xC0000084
+#define X86_64_MSR_FS_BASE        0xC0000100
+#define X86_64_MSR_GS_BASE        0xC0000101
+#define X86_64_MSR_KERNEL_GS_BASE 0xC0000102
+
+u64 X86_64_ReadMsr(u32 msr);
+void X86_64_WriteMsr(u32 msr, u64 value);
+
+#endif /* SUPERVISOR_ARCH_X86_64_MSR_H */
