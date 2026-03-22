@@ -1,3 +1,4 @@
+#include <core/Spcb.h>
 #define DBG_MODULE "Hal"
 
 #include <arch/CpuCap.h>
@@ -40,5 +41,15 @@ void Hal_InitializeEarly()
 
     Mm_DumpMemMap(Mm_GetKernelMemMap());
 
+    bool hasMultiprocessor = Core_SpcbAllocateAll(Boot_LimineSmpReq.response);
+    if (!hasMultiprocessor)
+        Log(INFO, "multiprocessor capabilities not detected");
+
     Log(INFO, "early initialization done");
+}
+
+void Hal_DefaultInterruptHandler(void)
+{
+    Log(FATAL, "interrupt invoked before handler ready");
+    Hal_HaltCatchFire();
 }
