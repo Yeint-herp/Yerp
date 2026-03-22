@@ -11,6 +11,8 @@ BUILD_DIR ?= ../build/supervisor
 BIN_DIR := $(BUILD_DIR)/bin
 OBJ_DIR := $(BUILD_DIR)/obj
 
+TOOLS_DIR ?= ../tools
+
 OUTPUT := $(BIN_DIR)/supervisor
 MAP_FILE := $(BIN_DIR)/supervisor.map
 
@@ -31,7 +33,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -ffreestanding -fno-stack-check -fstack-protector-strong \
                  -fno-pic -fno-omit-frame-pointer -fwrapv -fdollars-in-identifiers \
                  -Wvla -Wshadow \
-                 -isystem. -isystemsource -include const.h \
+                 -isystem. -isystemsource -I$(BUILD_DIR)/include -include const.h \
                  $(ARCH_CFLAGS) -DkArch=$(ARCH)
 
 ifeq ($(MODE),debug)
@@ -46,7 +48,7 @@ endif
 
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_MODE) $(LTO_FLAGS)
 
-ASMFLAGS := -x assembler-with-cpp --target=$(TARGET_ASM) -g
+ASMFLAGS := -x assembler-with-cpp --target=$(TARGET_ASM) -I$(BUILD_DIR)/include -g
 LDFLAGS := -nostdlib -static -z max-page-size=0x1000 \
             -T link.ld \
             --orphan-handling=error --no-dynamic-linker \
@@ -64,9 +66,21 @@ ASM_OBJS := $(patsubst source/%.asm, $(OBJ_DIR)/%.o, $(ASM_SRCS))
 OBJS := $(C_OBJS) $(ASM_OBJS)
 DEPS      := $(OBJS:.o=.d)
 
+GENOFF_SRC := $(TOOLS_DIR)/genoff.c
+GENOFF_ASM := $(BUILD_DIR)/genoff.s
+GENOFF_INC := $(BUILD_DIR)/include/generated_offsets.inc
+
 .PHONY: all clean
 
 all: $(OUTPUT)
+
+$(GENOFF_INC): $(GENOFF_SRC) $(ALL_HEADERS)
+	@mkdir -p $(dir $@)
+	@echo "[GEN] generated_offsets.inc"
+	@$(CC) $(filter-out -flto,$(CFLAGS)) -S $< -o $(GENOFF_ASM)
+	@grep "#MAGIC_OFFSET#" $(GENOFF_ASM) | sed 's/#MAGIC_OFFSET#//g' > $@
+
+$(OBJS): $(GENOFF_INC)
 
 $(OUTPUT): $(OBJS) link.ld
 	@mkdir -p $(dir $@)

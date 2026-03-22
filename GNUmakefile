@@ -16,6 +16,7 @@ ifeq ($(filter $(ARCH),x86_64),)
 endif
 
 BUILD_ROOT := $(abspath build)/$(ARCH)
+TOOLS_DIR := $(abspath tools)
 BUILD_DIR := $(BUILD_ROOT)/$(MODE)
 ISO_DIR := $(BUILD_DIR)/iso_root
 HDD_DIR := $(BUILD_DIR)/hdd_root
@@ -58,7 +59,7 @@ all: run-hdd
 deps: $(LIMINE_DIR)/limine $(OVMF_CODE)
 
 supervisor:
-	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor)
+	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR)
 
 hdd: supervisor deps
 	@mkdir -p $(BUILD_DIR)
