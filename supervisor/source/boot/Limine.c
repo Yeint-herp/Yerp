@@ -1,4 +1,5 @@
 #include <boot/Limine.h>
+#include <limine.h>
 
 [[gnu::used, gnu::section(".limine_requests")]]
 volatile u64 Boot_LimineBaseRevision[] = LIMINE_BASE_REVISION(5);
@@ -17,3 +18,6 @@ volatile struct limine_hhdm_request Boot_LimineHhdmReq = {.id = LIMINE_HHDM_REQU
 [[gnu::used, gnu::section(".limine_requests")]]
 volatile struct limine_executable_address_request Boot_LimineExecAddrReq = {.id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
                                                                             .revision = 0};
+
+[[gnu::used, gnu::section(".limine_requests")]]
+volatile struct limine_mp_request Boot_LimineSmpReq = {.id = LIMINE_MP_REQUEST_ID, .revision = 0};
