@@ -26,4 +26,14 @@ typedef uptr vaddr_t;
 #define Bit_FirstSetIndex(x)   __builtin_ctz(x)
 #define Bit_FirstClearIndex(x) Bit_FirstSetIndex(~x)
 
+#ifndef offsetof
+#define offsetof(type, member) __builtin_offsetof(type, member)
+#endif
+
+#define container_of(ptr, type, member)                                                                                \
+    ({                                                                                                                 \
+        const typeof(((type *)0)->member) *__mptr = (ptr);                                                             \
+        (type *)((char *)__mptr - offsetof(type, member));                                                             \
+    })
+
 #endif /* SUPERVISOR_CONST_H */
