@@ -15,6 +15,7 @@ typedef struct
 bool Core_SpinlockTryAcquire(Core_Spinlock *lock);
 void Core_SpinlockAcquire(Core_Spinlock *lock);
 void Core_SpinlockRelease(Core_Spinlock *lock);
+void Core_SpinlockInit(Core_Spinlock *lock);
 
 Arch_IrqFlags Core_SpinlockAcquireIrq(Core_Spinlock *lock);
 void          Core_SpinlockReleaseIrq(Core_Spinlock *lock, Arch_IrqFlags flags);
