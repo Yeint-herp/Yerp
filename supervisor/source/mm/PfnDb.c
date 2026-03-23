@@ -1,9 +1,13 @@
 #define DBG_MODULE "MmPfnDb"
 
+#include <arch/CoreLocal.h>
+#include <arch/Irq.h>
 #include <core/Memory.h>
+#include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <mm/Early.h>
+#include <mm/Magazine.h>
 #include <mm/MemMap.h>
 #include <mm/MmLayout.h>
 #include <mm/PfnDb.h>
@@ -283,34 +287,75 @@ void Mm_TransitionPage(uptr pfn, Mm_PageLocation newState)
     Core_SpinlockRelease(&entry->Lock);
 }
 
-uptr Mm_AllocatePages(u32 flags, uptr count)
+static uptr s_MagazinePop(struct Mm_PfaMagazine *mag)
 {
-    ASSERT(count >= 1);
-
-    if ((flags & MM_ALLOC_CONTIGUOUS) || count > 1)
-    {
-        uptr ceiling = s_GetCeilingPfn(flags);
-
-        uptr pfn = s_ScanContiguous(ceiling, count, false);
-        if (pfn != MM_PFN_NULL)
-        {
-            s_ClaimContiguousRun(pfn, count, flags);
-            return pfn;
-        }
-
-        pfn = s_ScanContiguous(ceiling, count, true);
-        if (pfn != MM_PFN_NULL)
-        {
-            s_ClaimContiguousRun(pfn, count, flags);
-            return pfn;
-        }
-
-        Log(WARN, "contiguous allocation failed (count = %llu, flags = %#x)", count, flags);
+    if (mag->Count == 0)
         return MM_PFN_NULL;
-    }
 
-    bool constrained = (flags & (MM_ALLOC_BELOW_4G | MM_ALLOC_BELOW_16M)) != 0;
-    bool needZero    = (flags & MM_ALLOC_ZEROED) != 0;
+    mag->Count--;
+    return mag->Pages[mag->Count];
+}
+
+static bool s_MagazinePush(struct Mm_PfaMagazine *mag, uptr pfn)
+{
+    if (mag->Count >= MM_PFA_MAGAZINE_SIZE)
+        return false;
+
+    mag->Pages[mag->Count] = pfn;
+    mag->Count++;
+    return true;
+}
+
+static void s_MagazineRefill(struct Mm_PfaMagazine *mag, Mm_PfnList *list)
+{
+    u16 target = MM_PFA_MAGAZINE_SIZE / 2;
+
+    while (mag->Count < target)
+    {
+        uptr pfn = Mm_RemovePageFromList(list);
+        if (pfn == MM_PFN_NULL)
+            break;
+
+        Mm_Pfn *entry = s_PfnElement(pfn);
+
+        Core_SpinlockAcquire(&entry->Lock);
+        entry->e1.PageLocation   = ActiveAndValid;
+        entry->e1.MagazineCached = 1;
+        entry->ReferenceCount    = 1;
+        Core_SpinlockRelease(&entry->Lock);
+
+        mag->Pages[mag->Count++] = pfn;
+    }
+}
+
+static void s_MagazineDrain(struct Mm_PfaMagazine *mag, Mm_PfnList *list)
+{
+    u16 target = mag->Count / 2;
+
+    while (mag->Count > target)
+    {
+        mag->Count--;
+        uptr pfn = mag->Pages[mag->Count];
+
+        Mm_Pfn *entry = s_PfnElement(pfn);
+
+        Core_SpinlockAcquire(&entry->Lock);
+        entry->e1.PageLocation   = list->ListName;
+        entry->e1.MagazineCached = 0;
+        entry->ReferenceCount    = 0;
+        entry->PteFrame          = 0;
+        entry->OriginalPte       = (Mm_PageTableEntry){};
+        entry->u2.ShareCount     = 0;
+        Core_SpinlockRelease(&entry->Lock);
+
+        Mm_InsertPageInList(list, pfn);
+    }
+}
+
+static uptr s_AllocateConstrained(u32 flags)
+{
+    bool needZero = (flags & MM_ALLOC_ZEROED) != 0;
+    uptr ceiling  = s_GetCeilingPfn(flags);
 
     Mm_PfnList *primary, *secondary;
 
@@ -325,38 +370,21 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
         secondary = &Mm_ZeroedPageListHead;
     }
 
-    uptr pfn;
-    if (!constrained)
-    {
-        pfn = Mm_RemovePageFromList(primary);
-        if (pfn == MM_PFN_NULL)
-            pfn = Mm_RemovePageFromList(secondary);
-        if (pfn == MM_PFN_NULL)
-            pfn = Mm_RemovePageFromList(&Mm_StandbyPageListHead);
-    }
-    else
-    {
-        uptr ceiling = s_GetCeilingPfn(flags);
-
-        pfn = s_RemoveConstrainedPage(primary, ceiling);
-        if (pfn == MM_PFN_NULL)
-            pfn = s_RemoveConstrainedPage(secondary, ceiling);
-        if (pfn == MM_PFN_NULL)
-            pfn = s_RemoveConstrainedPage(&Mm_StandbyPageListHead, ceiling);
-    }
+    uptr pfn = s_RemoveConstrainedPage(primary, ceiling);
+    if (pfn == MM_PFN_NULL)
+        pfn = s_RemoveConstrainedPage(secondary, ceiling);
+    if (pfn == MM_PFN_NULL)
+        pfn = s_RemoveConstrainedPage(&Mm_StandbyPageListHead, ceiling);
 
     if (pfn == MM_PFN_NULL)
-    {
-        Log(WARN, "page allocation failed (flags = %#x)", flags);
         return MM_PFN_NULL;
-    }
 
     Mm_Pfn *entry = s_PfnElement(pfn);
 
     Core_SpinlockAcquire(&entry->Lock);
 
-    bool wasStandby = (entry->e1.PageLocation == StandbyPageList);
     bool wasFree    = (entry->e1.PageLocation == FreePageList);
+    bool wasStandby = (entry->e1.PageLocation == StandbyPageList);
 
     if (wasStandby)
         entry->OriginalPte = (Mm_PageTableEntry){};
@@ -375,6 +403,151 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
     return pfn;
 }
 
+static uptr s_AllocateContiguousPages(u32 flags, uptr count)
+{
+    uptr ceiling = s_GetCeilingPfn(flags);
+
+    uptr pfn = s_ScanContiguous(ceiling, count, false);
+    if (pfn != MM_PFN_NULL)
+    {
+        s_ClaimContiguousRun(pfn, count, flags);
+        return pfn;
+    }
+
+    pfn = s_ScanContiguous(ceiling, count, true);
+    if (pfn != MM_PFN_NULL)
+    {
+        s_ClaimContiguousRun(pfn, count, flags);
+        return pfn;
+    }
+
+    return MM_PFN_NULL;
+}
+
+uptr Mm_AllocatePages(u32 flags, uptr count)
+{
+    ASSERT(count >= 1);
+
+    if ((flags & MM_ALLOC_CONTIGUOUS) || count > 1)
+    {
+        uptr pfn = s_AllocateContiguousPages(flags, count);
+        if (pfn == MM_PFN_NULL)
+            Log(WARN, "contiguous allocation failed (count = %llu, flags = %#x)", count, flags);
+
+        return pfn;
+    }
+
+    if (flags & (MM_ALLOC_BELOW_4G | MM_ALLOC_BELOW_16M))
+    {
+        uptr pfn = s_AllocateConstrained(flags);
+        if (pfn == MM_PFN_NULL)
+            Log(WARN, "constrained allocation failed (flags = %#x)", flags);
+
+        return pfn;
+    }
+
+    bool needZero = (flags & MM_ALLOC_ZEROED) != 0;
+
+    Arch_IrqFlags     irq  = Arch_IrqSave();
+    struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
+
+    struct Mm_PfaMagazine *preferred, *fallback;
+    if (needZero)
+    {
+        preferred = &spcb->ZeroPages;
+        fallback  = &spcb->FreePages;
+    }
+    else
+    {
+        preferred = &spcb->FreePages;
+        fallback  = &spcb->ZeroPages;
+    }
+
+    uptr pfn = s_MagazinePop(preferred);
+    if (pfn == MM_PFN_NULL)
+        pfn = s_MagazinePop(fallback);
+
+    if (pfn != MM_PFN_NULL)
+    {
+        Mm_Pfn *entry = s_PfnElement(pfn);
+
+        Core_SpinlockAcquire(&entry->Lock);
+        entry->e1.MagazineCached = 0;
+        Core_SpinlockRelease(&entry->Lock);
+
+        Arch_IrqRestore(irq);
+
+        if (needZero && preferred != &spcb->ZeroPages)
+        {
+            void *va = Mm_PhysToVirt(pfn << PAGE_SHIFT);
+            Core_ZeroMemory(va, PAGE_SIZE);
+        }
+
+        return pfn;
+    }
+
+    if (needZero)
+    {
+        s_MagazineRefill(&spcb->ZeroPages, &Mm_ZeroedPageListHead);
+        if (spcb->ZeroPages.Count == 0)
+            s_MagazineRefill(&spcb->ZeroPages, &Mm_FreePageListHead);
+
+        pfn = s_MagazinePop(&spcb->ZeroPages);
+    }
+    else
+    {
+        s_MagazineRefill(&spcb->FreePages, &Mm_FreePageListHead);
+        if (spcb->FreePages.Count == 0)
+            s_MagazineRefill(&spcb->FreePages, &Mm_ZeroedPageListHead);
+
+        pfn = s_MagazinePop(&spcb->FreePages);
+    }
+
+    if (pfn != MM_PFN_NULL)
+    {
+        Mm_Pfn *entry = s_PfnElement(pfn);
+
+        Core_SpinlockAcquire(&entry->Lock);
+        entry->e1.MagazineCached = 0;
+        Core_SpinlockRelease(&entry->Lock);
+
+        Arch_IrqRestore(irq);
+
+        if (needZero)
+        {
+            void *va = Mm_PhysToVirt(pfn << PAGE_SHIFT);
+            Core_ZeroMemory(va, PAGE_SIZE);
+        }
+
+        return pfn;
+    }
+
+    Arch_IrqRestore(irq);
+
+    pfn = Mm_RemovePageFromList(&Mm_StandbyPageListHead);
+    if (pfn != MM_PFN_NULL)
+    {
+        Mm_Pfn *entry = s_PfnElement(pfn);
+
+        Core_SpinlockAcquire(&entry->Lock);
+        entry->OriginalPte     = (Mm_PageTableEntry){};
+        entry->e1.PageLocation = ActiveAndValid;
+        entry->ReferenceCount  = 1;
+        Core_SpinlockRelease(&entry->Lock);
+
+        if (needZero)
+        {
+            void *va = Mm_PhysToVirt(pfn << PAGE_SHIFT);
+            Core_ZeroMemory(va, PAGE_SIZE);
+        }
+
+        return pfn;
+    }
+
+    Log(WARN, "page allocation failed (flags = %#x)", flags);
+    return MM_PFN_NULL;
+}
+
 void Mm_FreePages(uptr pfn, uptr count)
 {
     for (uptr i = 0; i < count; i++)
@@ -387,23 +560,35 @@ void Mm_FreePages(uptr pfn, uptr count)
         Core_SpinlockAcquire(&entry->Lock);
 
         ASSERT(entry->e1.PageLocation == ActiveAndValid);
+        ASSERT(entry->e1.MagazineCached == 0);
         ASSERT(entry->ReferenceCount >= 1);
 
         entry->ReferenceCount--;
 
-        if (entry->ReferenceCount == 0)
+        if (entry->ReferenceCount > 0)
         {
-            entry->e1.PageLocation = FreePageList;
-            entry->PteFrame        = 0;
-            entry->OriginalPte     = (Mm_PageTableEntry){};
-            entry->u2.ShareCount   = 0;
-
             Core_SpinlockRelease(&entry->Lock);
-
-            Mm_InsertPageInList(&Mm_FreePageListHead, p);
+            continue;
         }
-        else
-            Core_SpinlockRelease(&entry->Lock);
+
+        entry->e1.MagazineCached = 1;
+        Core_SpinlockRelease(&entry->Lock);
+
+        Arch_IrqFlags     irq  = Arch_IrqSave();
+        struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
+
+        if (s_MagazinePush(&spcb->FreePages, p))
+        {
+            Arch_IrqRestore(irq);
+            continue;
+        }
+
+        s_MagazineDrain(&spcb->FreePages, &Mm_FreePageListHead);
+
+        bool pushed = s_MagazinePush(&spcb->FreePages, p);
+        ASSERT(pushed);
+
+        Arch_IrqRestore(irq);
     }
 }
 

@@ -44,7 +44,8 @@ typedef struct [[gnu::aligned(64)]] Mm_Pfn
             u64 WriteInProgress : 1;
             u64 RemovalRequested : 1;
             u64 CacheType : 3;
-            u64 Reserved : 53;
+            u64 MagazineCached : 1;
+            u64 Reserved : 52;
         };
         u64 EntireFlags;
     } e1;
