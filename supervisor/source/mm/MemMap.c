@@ -19,7 +19,7 @@ const char *Mm_GetRegionTypeString(Mm_RegionType type)
             return "BAD_MEMORY";
         case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
             return "BOOTLOADER_RECLAIMABLE";
-        case MEM_TYPE_KERNEL_AND_MODULES:
+        case MEM_TYPE_SUPERVISOR_MODULES:
             return "KERNEL_AND_MODULES";
         case MEM_TYPE_FRAMEBUFFER:
             return "FRAMEBUFFER";

@@ -3,10 +3,12 @@
 #include <core/Memory.h>
 #include <core/Spinlock.h>
 #include <debug/DbgPrint.h>
+#include <debug/Panic.h>
 #include <hal/Hal.h>
 #include <limine.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
+#include <mm/PfnDb.h>
 
 static Mm_KernelMemMap s_MemMap         = {};
 static Core_Spinlock   s_EarlyAllocLock = {};
@@ -21,6 +23,16 @@ static u64 s_HhdmOffset = 0;
 u64 Mm_GetHhdmBase(void)
 {
     return s_HhdmOffset;
+}
+
+void *Mm_PhysToVirt(uptr physAddr)
+{
+    return (void *)(physAddr + Mm_GetHhdmBase());
+}
+
+uptr Mm_VirtToPhys(void *virtAddr)
+{
+    return (uptr)virtAddr - Mm_GetHhdmBase();
 }
 
 static Mm_RegionType s_TranslateLimineType(u64 limineType)
@@ -40,7 +52,7 @@ static Mm_RegionType s_TranslateLimineType(u64 limineType)
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
             return MEM_TYPE_BOOTLOADER_RECLAIMABLE;
         case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
-            return MEM_TYPE_KERNEL_AND_MODULES;
+            return MEM_TYPE_SUPERVISOR_MODULES;
         case LIMINE_MEMMAP_FRAMEBUFFER:
             return MEM_TYPE_FRAMEBUFFER;
         default:
@@ -159,6 +171,9 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
         if (alignedBase < reg->Base)
             continue;
 
+        if (alignedBase < 0x1000)
+            continue;
+
         allocPhys = alignedBase;
 
         u64 belowLen = alignedBase - reg->Base;
@@ -207,7 +222,7 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
         return nullptr;
     }
 
-    void *virt_ptr = (void *)(allocPhys + s_HhdmOffset);
+    void *virt_ptr = Mm_PhysToVirt(allocPhys);
     Core_ZeroMemory(virt_ptr, size);
 
     return virt_ptr;
