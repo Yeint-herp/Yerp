@@ -96,10 +96,11 @@ SECTIONS
 	.debug_rnglists : { *(.debug_rnglists) }
 	.debug_loclists : { *(.debug_loclists) }
 
+	__end = .;
+
 	/DISCARD/ : {
 		*(.eh_frame*)
 		*(.note .note.*)
 		*(.comment)
 	}
 }
-
