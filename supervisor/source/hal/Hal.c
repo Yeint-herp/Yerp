@@ -8,6 +8,8 @@
 #include <hal/Hal.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
+#include <mm/MmLayout.h>
+#include <mm/PfnDb.h>
 
 void Hal_InitializeEarly()
 {
@@ -44,6 +46,9 @@ void Hal_InitializeEarly()
     bool hasMultiprocessor = Core_SpcbAllocateAll(Boot_LimineSmpReq.response);
     if (!hasMultiprocessor)
         Log(INFO, "multiprocessor capabilities not detected");
+
+    Arch_MmLayoutInit();
+    Mm_PfnDbInit();
 
     Log(INFO, "early initialization done");
 }

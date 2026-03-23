@@ -1,0 +1,6 @@
+#ifndef SUPERVISOR_MM_PAGETABLE_H
+#define SUPERVISOR_MM_PAGETABLE_H
+
+typedef u64 Mm_PageTableEntry;
+
+#endif /* SUPERVISOR_MM_PAGETABLE_H */
