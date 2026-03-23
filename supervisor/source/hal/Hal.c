@@ -1,9 +1,9 @@
-#include <core/Spcb.h>
 #define DBG_MODULE "Hal"
 
 #include <arch/CpuCap.h>
 #include <arch/Rng.h>
 #include <boot/Limine.h>
+#include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <hal/Hal.h>
 #include <mm/Early.h>
