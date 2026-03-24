@@ -3,6 +3,7 @@
 
 #include <core/Spinlock.h>
 #include <mm/PageTable.h>
+#include <mm/Slab.h>
 
 #define MM_PFN_NULL ((uptr) - 1)
 #define PAGE_SHIFT  12
@@ -21,17 +22,48 @@ typedef struct [[gnu::aligned(64)]] Mm_Pfn
     {
         uptr               Flink;
         Mm_PageTableEntry *PteAddress;
+
+        struct
+        {
+            void *FreeList;
+        } Slab;
     } u1;
 
     union
     {
         uptr Blink;
         u64  ShareCount;
+
+        struct
+        {
+            Mm_SlabCache *Cache;
+        } Slab;
     } u2;
 
-    Mm_PageTableEntry OriginalPte;
+    union
+    {
+        Mm_PageTableEntry OriginalPte;
 
-    uptr PteFrame;
+        struct
+        {
+            u16 InUse;
+            u16 Total;
+            u16 ObjSize;
+            u8  Frozen;
+            u8  Pad;
+        } Slab;
+    } u3;
+
+    union
+    {
+        uptr PteFrame;
+
+        struct
+        {
+            u32 PartialNext;
+            u32 PartialPrev;
+        } Slab;
+    } u4;
 
     union
     {
@@ -45,7 +77,9 @@ typedef struct [[gnu::aligned(64)]] Mm_Pfn
             u64 RemovalRequested : 1;
             u64 CacheType : 3;
             u64 MagazineCached : 1;
-            u64 Reserved : 52;
+            u64 SlabPage : 1;
+            u64 LargePoolHead : 1;
+            u64 Reserved : 50;
         };
         u64 EntireFlags;
     } e1;
@@ -53,7 +87,16 @@ typedef struct [[gnu::aligned(64)]] Mm_Pfn
     volatile i32  ReferenceCount;
     Core_Spinlock Lock;
 
-    u64 Reserved[2];
+    union
+    {
+        u64 Reserved[2];
+
+        struct
+        {
+            u32 LargePageCount;
+            u32 LargeTag;
+        } Pool;
+    } ex;
 } Mm_Pfn;
 
 typedef enum Mm_PageLocation

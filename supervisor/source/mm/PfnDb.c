@@ -188,7 +188,7 @@ static void s_ClaimContiguousRun(uptr start, uptr count, u32 flags)
         }
 
         if (entry->e1.PageLocation == StandbyPageList)
-            entry->OriginalPte = (Mm_PageTableEntry){};
+            entry->u3.OriginalPte = (Mm_PageTableEntry){};
 
         entry->e1.PageLocation = ActiveAndValid;
         entry->ReferenceCount  = 1;
@@ -343,8 +343,8 @@ static void s_MagazineDrain(struct Mm_PfaMagazine *mag, Mm_PfnList *list)
         entry->e1.PageLocation   = list->ListName;
         entry->e1.MagazineCached = 0;
         entry->ReferenceCount    = 0;
-        entry->PteFrame          = 0;
-        entry->OriginalPte       = (Mm_PageTableEntry){};
+        entry->u4.PteFrame       = 0;
+        entry->u3.OriginalPte    = (Mm_PageTableEntry){};
         entry->u2.ShareCount     = 0;
         Core_SpinlockRelease(&entry->Lock);
 
@@ -387,7 +387,7 @@ static uptr s_AllocateConstrained(u32 flags)
     bool wasStandby = (entry->e1.PageLocation == StandbyPageList);
 
     if (wasStandby)
-        entry->OriginalPte = (Mm_PageTableEntry){};
+        entry->u3.OriginalPte = (Mm_PageTableEntry){};
 
     entry->e1.PageLocation = ActiveAndValid;
     entry->ReferenceCount  = 1;
@@ -530,7 +530,7 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
         Mm_Pfn *entry = s_PfnElement(pfn);
 
         Core_SpinlockAcquire(&entry->Lock);
-        entry->OriginalPte     = (Mm_PageTableEntry){};
+        entry->u3.OriginalPte  = (Mm_PageTableEntry){};
         entry->e1.PageLocation = ActiveAndValid;
         entry->ReferenceCount  = 1;
         Core_SpinlockRelease(&entry->Lock);
