@@ -39,3 +39,23 @@ void Arch_AtomicStore64(Arch_Atomic64 *target, u64 value)
 {
     __atomic_store_n(target, value, __ATOMIC_RELEASE);
 }
+
+u32 Arch_AtomicAdd32(Arch_Atomic32 *target, u32 value)
+{
+    return __atomic_fetch_add(target, value, __ATOMIC_SEQ_CST);
+}
+
+u64 Arch_AtomicAdd64(Arch_Atomic64 *target, u64 value)
+{
+    return __atomic_fetch_add(target, value, __ATOMIC_SEQ_CST);
+}
+
+u32 Arch_AtomicSub32(Arch_Atomic32 *target, u32 value)
+{
+    return __atomic_fetch_sub(target, value, __ATOMIC_SEQ_CST);
+}
+
+u64 Arch_AtomicSub64(Arch_Atomic64 *target, u64 value)
+{
+    return __atomic_fetch_sub(target, value, __ATOMIC_SEQ_CST);
+}
