@@ -11,6 +11,11 @@
 static struct Core_SPCB *s_SpcbArray = nullptr;
 static u32               s_CpuCount  = 0;
 
+u32 Core_GetProcessorCount(void)
+{
+    return s_CpuCount;
+}
+
 bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
 {
     if (!mpResponse || mpResponse->cpu_count <= 1)

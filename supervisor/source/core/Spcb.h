@@ -30,4 +30,6 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse);
 bool Core_SpcbInit(struct Core_SPCB *spcb);
 bool Core_SpcbLateInit(struct Core_SPCB *spcb);
 
+u32 Core_GetProcessorCount(void);
+
 #endif /* SUPERVISOR_CORE_SPCB_H */
