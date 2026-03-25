@@ -104,10 +104,7 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
     }
 
     if (!foundSpace)
-    {
-        Log(FATAL, "failed to carve space for the early memory map");
-        Exec_HaltCatchFire();
-    }
+        Panic("failed to carve space for the early memory map");
 
     s_MemMap.Regions  = (Mm_MemRegion *)(arrayPhys + s_HhdmOffset);
     s_MemMap.Capacity = capacity;

@@ -5,6 +5,7 @@
 #include <boot/Limine.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
+#include <debug/Panic.h>
 #include <executive/Init.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
@@ -35,11 +36,8 @@ void Exec_InitializeEarly()
 
     if (!LIMINE_BASE_REVISION_SUPPORTED(Boot_LimineBaseRevision) || !Boot_LimineMemmapReq.response ||
         !Boot_LimineHhdmReq.response)
-    {
-        Log(FATAL, "critical bootloader requests not fulfilled");
+        Panic("critical bootloader requests not fulfilled");
 
-        Exec_HaltCatchFire();
-    }
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
 
     Mm_DumpMemMap(Mm_GetKernelMemMap());
@@ -57,6 +55,5 @@ void Exec_InitializeEarly()
 
 void Exec_DefaultInterruptHandler(void)
 {
-    Log(FATAL, "interrupt invoked before handler ready");
-    Exec_HaltCatchFire();
+    Panic("interrupt invoked before handler ready");
 }

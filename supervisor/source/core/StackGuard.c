@@ -1,5 +1,6 @@
 #include <arch/Rng.h>
 #include <debug/DbgPrint.h>
+#include <debug/Panic.h>
 #include <executive/Init.h>
 
 uptr __stack_chk_guard = 0xDEADCAFEBAADF00D;
@@ -29,7 +30,5 @@ retry:
 [[noreturn]]
 void __stack_chk_fail(void)
 {
-    Dbg_Print("*** STACK SMASH DETECTED ***\n");
-
-    Exec_HaltCatchFire();
+    Panic("*** STACK SMASH DETECTED ***");
 }

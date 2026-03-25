@@ -4,6 +4,7 @@
 #include <core/Memory.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
+#include <debug/Panic.h>
 #include <executive/Init.h>
 #include <limine.h>
 #include <mm/Early.h>
@@ -27,10 +28,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
         s_SpcbArray     = (struct Core_SPCB *)Mm_EarlyAllocate(totalSize, 64);
 
         if (!s_SpcbArray)
-        {
-            Log(FATAL, "Mm_EarlyAllocate failed for UP SPCB!");
-            Exec_HaltCatchFire();
-        }
+            Panic("Mm_EarlyAllocate failed for UP SPCB!");
 
         Log(TRACE, "allocated BSP SPCB at %p", s_SpcbArray);
         Core_ZeroMemory(s_SpcbArray, totalSize);
@@ -48,10 +46,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     s_SpcbArray     = (struct Core_SPCB *)Mm_EarlyAllocate(totalSize, 64);
 
     if (!s_SpcbArray)
-    {
-        Log(FATAL, "Mm_EarlyAllocate failed for %u SMP SPCBs!", s_CpuCount);
-        Exec_HaltCatchFire();
-    }
+        Panic("Mm_EarlyAllocate failed for %u SMP SPCBs!", s_CpuCount);
 
     Log(TRACE, "allocated SPCBs array at %p (size %llZ)", s_SpcbArray, totalSize);
     Core_ZeroMemory(s_SpcbArray, totalSize);
@@ -84,10 +79,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     }
 
     if (!Core_SpcbInit(&s_SpcbArray[0]))
-    {
-        Log(FATAL, "Core_SpcbInit failed for BSP SPCR!");
-        Exec_HaltCatchFire();
-    }
+        Panic("Core_SpcbInit failed for BSP SPCR!");
 
     return true;
 }
