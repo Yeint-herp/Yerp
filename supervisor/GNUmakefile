@@ -34,7 +34,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -fno-pic -fno-omit-frame-pointer -fwrapv -fdollars-in-identifiers \
                  -Wvla -Wshadow \
                  -isystem. -isystemsource -I$(BUILD_DIR)/include -include const.h \
-                 $(ARCH_CFLAGS) -DkArch=$(ARCH)
+                 $(ARCH_CFLAGS) -DkArch=$(ARCH) $(EXTRA_CFLAGS)
 
 ifeq ($(MODE),debug)
     CFLAGS_MODE := -O0 -g3
@@ -48,7 +48,7 @@ endif
 
 CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_MODE) $(LTO_FLAGS)
 
-ASMFLAGS := -x assembler-with-cpp --target=$(TARGET_ASM) -I$(BUILD_DIR)/include -g
+ASMFLAGS := -x assembler-with-cpp --target=$(TARGET_ASM) -I$(BUILD_DIR)/include -g $(EXTRA_CFLAGS)
 LDFLAGS := -nostdlib -static -z max-page-size=0x1000 \
             -T link.ld \
             --orphan-handling=error --no-dynamic-linker \

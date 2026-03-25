@@ -26,6 +26,9 @@ SECTIONS
 	__rodata_start = .;
 	.rodata : {
 		*(.rodata .rodata.*)
+		__start_ci_tests = .;
+        KEEP(*(.ci_tests))
+        __stop_ci_tests = .;
 	} :rodata
 
 	.limine_requests : {

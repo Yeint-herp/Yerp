@@ -59,7 +59,7 @@ all: run-hdd
 deps: $(LIMINE_DIR)/limine $(OVMF_CODE)
 
 supervisor:
-	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR)
+	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
 hdd: supervisor deps
 	@mkdir -p $(BUILD_DIR)
