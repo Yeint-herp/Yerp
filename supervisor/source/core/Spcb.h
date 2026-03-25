@@ -1,6 +1,7 @@
 #ifndef SUPERVISOR_CORE_SPCB_H
 #define SUPERVISOR_CORE_SPCB_H
 
+#include <arch/Atomic.h>
 #include <arch/Spcr.h>
 #include <mm/Magazine.h>
 
@@ -19,6 +20,8 @@ struct Core_SPCB
 
     struct Arch_SPCR ArchData;
     ArchId_t         ArchId;
+
+    Arch_Atomic32 SlabTid;
 };
 
 struct limine_mp_response;
