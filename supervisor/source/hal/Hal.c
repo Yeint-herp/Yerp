@@ -10,6 +10,7 @@
 #include <mm/MemMap.h>
 #include <mm/MmLayout.h>
 #include <mm/PfnDb.h>
+#include <mm/Pool.h>
 
 void Hal_InitializeEarly()
 {
@@ -49,6 +50,7 @@ void Hal_InitializeEarly()
 
     Arch_MmLayoutInit();
     Mm_PfnDbInit();
+    Ex_PoolInit();
 
     Log(INFO, "early initialization done");
 }
