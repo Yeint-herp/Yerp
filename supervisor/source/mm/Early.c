@@ -4,7 +4,7 @@
 #include <core/Spinlock.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 #include <limine.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
@@ -106,7 +106,7 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
     if (!foundSpace)
     {
         Log(FATAL, "failed to carve space for the early memory map");
-        Hal_HaltCatchFire();
+        Exec_HaltCatchFire();
     }
 
     s_MemMap.Regions  = (Mm_MemRegion *)(arrayPhys + s_HhdmOffset);

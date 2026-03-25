@@ -4,7 +4,7 @@
 #include <core/Memory.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 #include <limine.h>
 #include <mm/Early.h>
 
@@ -29,7 +29,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
         if (!s_SpcbArray)
         {
             Log(FATAL, "Mm_EarlyAllocate failed for UP SPCB!");
-            Hal_HaltCatchFire();
+            Exec_HaltCatchFire();
         }
 
         Log(TRACE, "allocated BSP SPCB at %p", s_SpcbArray);
@@ -50,7 +50,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     if (!s_SpcbArray)
     {
         Log(FATAL, "Mm_EarlyAllocate failed for %u SMP SPCBs!", s_CpuCount);
-        Hal_HaltCatchFire();
+        Exec_HaltCatchFire();
     }
 
     Log(TRACE, "allocated SPCBs array at %p (size %llZ)", s_SpcbArray, totalSize);
@@ -86,7 +86,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     if (!Core_SpcbInit(&s_SpcbArray[0]))
     {
         Log(FATAL, "Core_SpcbInit failed for BSP SPCR!");
-        Hal_HaltCatchFire();
+        Exec_HaltCatchFire();
     }
 
     return true;

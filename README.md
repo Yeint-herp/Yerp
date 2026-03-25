@@ -17,7 +17,7 @@ Supervisor is built with a strict architecture isolation approach, not allow any
 * `supervisor/source/arch/x86_64/`: Low-level CPU initialization and other x86_64 specific code.
 * `supervisor/source/core/`: High-level executive logic (Memory, SPCBs, Sync).
 * `supervisor/source/mm/`: Physical and virtual memory management.
-* `supervisor/source/hal/`: Hardware Abstraction Layer facilitating the boot process.
+* `supervisor/source/executive/`: Core supervisor executive facilitating the boot process.
 * `supervisor/source/debug/`: Kernel logging and debugging facilities.
 
 ## Build Requirements

@@ -1,7 +1,7 @@
 #ifndef SUPERVISOR_ARCH_CORE_LOCAL_H
 #define SUPERVISOR_ARCH_CORE_LOCAL_H
 
-#include <hal/Hal.h>
+#include <executive/Init.h>
 
 struct Core_SPCB;
 

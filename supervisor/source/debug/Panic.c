@@ -2,7 +2,7 @@
 #include <core/Spinlock.h>
 #include <core/VarArg.h>
 #include <debug/Panic.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 
 #define PANIC_HOOK_MAX 8
 #define PANIC_BUF_SIZE 1024
@@ -23,7 +23,7 @@ bool Panic_RegisterHook(Panic_Hook hook)
 [[noreturn]] static void s_PanicCore(const Arch_RegisterFrame *frame, const char *fmt, Core_VarArgs ap)
 {
     if (s_PanicActive)
-        Hal_HaltCatchFire();
+        Exec_HaltCatchFire();
 
     s_PanicActive = true;
 
@@ -59,7 +59,7 @@ bool Panic_RegisterHook(Panic_Hook hook)
     Dbg_FmtString(&ctx, "\n*** System halted ***\n", 23);
     Dbg_FmtFlush(&ctx);
 
-    Hal_HaltCatchFire();
+    Exec_HaltCatchFire();
 }
 
 void Panic_WithFrame(const Arch_RegisterFrame *frame, const char *fmt, ...)

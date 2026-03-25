@@ -1,6 +1,6 @@
 #include <arch/Rng.h>
 #include <debug/DbgPrint.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 
 uptr __stack_chk_guard = 0xDEADCAFEBAADF00D;
 
@@ -31,5 +31,5 @@ void __stack_chk_fail(void)
 {
     Dbg_Print("*** STACK SMASH DETECTED ***\n");
 
-    Hal_HaltCatchFire();
+    Exec_HaltCatchFire();
 }

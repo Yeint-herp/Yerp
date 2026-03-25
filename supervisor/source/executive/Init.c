@@ -1,18 +1,18 @@
-#define DBG_MODULE "Hal"
+#define DBG_MODULE "Executive"
 
 #include <arch/CpuCap.h>
 #include <arch/Rng.h>
 #include <boot/Limine.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/MmLayout.h>
 #include <mm/PfnDb.h>
 #include <mm/Pool.h>
 
-void Hal_InitializeEarly()
+void Exec_InitializeEarly()
 {
     Dbg_RegisterSinker(g_RingBufSinker);
     Log(TRACE, "early ring buffer sinker ready");
@@ -38,7 +38,7 @@ void Hal_InitializeEarly()
     {
         Log(FATAL, "critical bootloader requests not fulfilled");
 
-        Hal_HaltCatchFire();
+        Exec_HaltCatchFire();
     }
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
 
@@ -55,8 +55,8 @@ void Hal_InitializeEarly()
     Log(INFO, "early initialization done");
 }
 
-void Hal_DefaultInterruptHandler(void)
+void Exec_DefaultInterruptHandler(void)
 {
     Log(FATAL, "interrupt invoked before handler ready");
-    Hal_HaltCatchFire();
+    Exec_HaltCatchFire();
 }

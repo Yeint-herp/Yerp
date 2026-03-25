@@ -3,7 +3,7 @@
 #include <arch/x86_64/Spcr.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
-#include <hal/Hal.h>
+#include <executive/Init.h>
 #include <limine.h>
 
 bool Arch_SpcrInit(struct Arch_SPCR *spcr)
@@ -13,7 +13,7 @@ bool Arch_SpcrInit(struct Arch_SPCR *spcr)
     X86_64_IdtInit(&spcr->Idt);
 
     for (int i = 0; i < 256; i++)
-        spcr->IsrHandlerTable[i] = (uptr)Hal_DefaultInterruptHandler;
+        spcr->IsrHandlerTable[i] = (uptr)Exec_DefaultInterruptHandler;
 
     Log(TRACE, "SPCR[%i] early initialized", container_of(spcr, struct Core_SPCB, ArchData)->ProcessorNumber);
 

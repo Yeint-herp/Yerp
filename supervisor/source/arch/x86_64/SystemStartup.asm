@@ -1,16 +1,16 @@
 .section .text, "ax", @progbits
 .balign 16
 
-.extern Hal_InitializeEarly
+.extern Exec_InitializeEarly
 
 .global Supervisor_SystemStartup
-.global Hal_HaltCatchFire
+.global Exec_HaltCatchFire
 
 Supervisor_SystemStartup:
-    call Hal_InitializeEarly
+    call Exec_InitializeEarly
     call Core_StackGuardInit
 
-Hal_HaltCatchFire:
+Exec_HaltCatchFire:
     cli
 1:
     hlt
