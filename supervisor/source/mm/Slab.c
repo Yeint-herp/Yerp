@@ -90,7 +90,7 @@ static u32 s_LoadTid(void)
 static uptr s_AllocSlab(Mm_SlabCache *cache)
 {
     uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
-    if (pfn == MM_PFN_NULL)
+    if (pfn == (u32)MM_PFN_NULL)
         return MM_PFN_NULL;
 
     Mm_Pfn *entry = Mm_GetPfnEntry(pfn);
@@ -211,7 +211,7 @@ static void s_DeactivateSlab(Mm_SlabCache *cache, Mm_SlabCpuState *cs)
 
 static void *s_AllocSlowPath(Mm_SlabCache *cache, Mm_SlabCpuState *cs)
 {
-    if (cs->Slab != MM_PFN_NULL)
+    if (cs->Slab != (u32)MM_PFN_NULL)
         s_DeactivateSlab(cache, cs);
 
     Core_SpinlockAcquire(&cache->Lock);
@@ -340,11 +340,15 @@ void *Mm_SlabAlloc(Mm_SlabCache *cache, u32 tag)
 
     for (u32 attempt = 0; attempt < SLAB_CAS_MAX_ATTEMPTS; attempt++)
     {
-        u32              tid = s_LoadTid();
+        u32 tid = s_LoadTid();
         Arch_CompilerBarrier();
         u32              cpu = Arch_GetCurrentSpcb()->ProcessorNumber;
         Mm_SlabCpuState *cs  = &cache->CpuSlabs[cpu];
-        void            *obj = cs->FreeList;
+
+        if (cs->Slab == (u32)MM_PFN_NULL)
+            break;
+
+        void *obj = cs->FreeList;
 
         if (!obj)
             break;
@@ -374,7 +378,7 @@ void *Mm_SlabAlloc(Mm_SlabCache *cache, u32 tag)
     Arch_IrqFlags    irq = Arch_IrqSave();
     Mm_SlabCpuState *cs  = s_GetCpuState(cache);
 
-    if (cs->Slab != MM_PFN_NULL)
+    if (cs->Slab != (u32)MM_PFN_NULL)
     {
         Mm_Pfn *entry = Mm_GetPfnEntry(cs->Slab);
 
@@ -415,7 +419,7 @@ void Mm_SlabFree(void *ptr)
 
     for (u32 attempt = 0; attempt < SLAB_CAS_MAX_ATTEMPTS; attempt++)
     {
-        u32              tid = s_LoadTid();
+        u32 tid = s_LoadTid();
         Arch_CompilerBarrier();
         u32              cpu = Arch_GetCurrentSpcb()->ProcessorNumber;
         Mm_SlabCpuState *cs  = &cache->CpuSlabs[cpu];
