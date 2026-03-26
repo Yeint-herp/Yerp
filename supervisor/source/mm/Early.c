@@ -163,7 +163,7 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
             continue;
 
         u64 regTop      = reg->Base + reg->Length;
-        u64 alignedBase = (regTop - size) & ~(alignment - 1);
+        u64 alignedBase = AlignDown(regTop - size, alignment);
 
         if (alignedBase < reg->Base)
             continue;

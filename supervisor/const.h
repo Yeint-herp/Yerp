@@ -30,6 +30,11 @@ typedef uptr vaddr_t;
 #define offsetof(type, member) __builtin_offsetof(type, member)
 #endif
 
+#define AlignDown(val, align) ((val) & ~((typeof(val))(align) - 1))
+#define AlignUp(val, align)   (((val) + ((typeof(val))(align) - 1)) & ~((typeof(val))(align) - 1))
+
+#define IsAligned(val, align) (((val) & ((typeof(val))(align) - 1)) == 0)
+
 #define container_of(ptr, type, member)                                                                                \
     ({                                                                                                                 \
         const typeof(((type *)0)->member) *__mptr = (ptr);                                                             \

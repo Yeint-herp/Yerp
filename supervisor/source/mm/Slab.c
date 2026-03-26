@@ -21,6 +21,9 @@ static u8   *s_BootArena    = nullptr;
 static usize s_BootArenaOff = 0;
 static bool  s_PoolReady    = false;
 
+constexpr usize s_CpuStateAlign = alignof(Mm_SlabCpuState);
+static_assert(s_CpuStateAlign > 0 && (s_CpuStateAlign & (s_CpuStateAlign - 1)) == 0);
+
 static void *s_AllocCpuSlabs(u32 cpuCount)
 {
     usize size  = cpuCount * sizeof(Mm_SlabCpuState);
@@ -38,7 +41,7 @@ static void *s_AllocCpuSlabs(u32 cpuCount)
         s_BootArenaOff = 0;
     }
 
-    usize alignedOff = (s_BootArenaOff + align - 1) & ~(align - 1);
+    usize alignedOff = AlignUp(s_BootArenaOff, align);
 
     if (alignedOff + size > PAGE_SIZE)
     {
@@ -297,7 +300,9 @@ void Mm_SlabCacheInit(Mm_SlabCache *cache, const char *name, usize objSize, usiz
     if (alignment < sizeof(void *))
         alignment = sizeof(void *);
 
-    usize padded = (objSize + alignment - 1) & ~(alignment - 1);
+    ASSERT(alignment > 0 && (alignment & (alignment - 1)) == 0);
+
+    usize padded = AlignUp(objSize, alignment);
     if (padded < sizeof(void *) * 2)
         padded = sizeof(void *) * 2;
 

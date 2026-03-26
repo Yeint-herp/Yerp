@@ -57,7 +57,7 @@ void *Ex_Allocate(usize size, u32 tag)
         return ptr;
     }
 
-    usize pageCount = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+    usize pageCount = AlignUp(size, PAGE_SIZE) >> PAGE_SHIFT;
 
     uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, pageCount);
     if (pfn == MM_PFN_NULL)

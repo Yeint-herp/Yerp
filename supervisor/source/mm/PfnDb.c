@@ -657,8 +657,8 @@ void Mm_PfnDbInit(void)
         const uptr dbStartByte = startPfn * sizeof(Mm_Pfn);
         const uptr dbEndByte   = endPfn * sizeof(Mm_Pfn);
 
-        uptr       mapStart = dbStartByte & ~(PAGE_SIZE - 1);
-        const uptr mapEnd   = (dbEndByte + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+        uptr       mapStart = AlignDown(dbStartByte, PAGE_SIZE);
+        const uptr mapEnd   = AlignUp(dbEndByte, PAGE_SIZE);
 
         if (lastMappedPage != MM_PFN_NULL && mapStart <= lastMappedPage)
             mapStart = lastMappedPage + PAGE_SIZE;
@@ -703,8 +703,8 @@ void Mm_PfnDbInit(void)
         const uptr dbStartByte = startPfn * sizeof(Mm_Pfn);
         const uptr dbEndByte   = endPfn * sizeof(Mm_Pfn);
 
-        uptr       mapStart = dbStartByte & ~(PAGE_SIZE - 1);
-        const uptr mapEnd   = (dbEndByte + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+        uptr       mapStart = AlignDown(dbStartByte, PAGE_SIZE);
+        const uptr mapEnd   = AlignUp(dbEndByte, PAGE_SIZE);
 
         if (lastMappedOffset != MM_PFN_NULL && mapStart <= lastMappedOffset)
             mapStart = lastMappedOffset + PAGE_SIZE;
