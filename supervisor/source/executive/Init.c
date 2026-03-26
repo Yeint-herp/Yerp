@@ -7,6 +7,7 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <executive/Init.h>
+#include <executive/Object.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/MmLayout.h>
@@ -49,6 +50,7 @@ void Exec_InitializeEarly()
     Arch_MmLayoutInit();
     Mm_PfnDbInit();
     Ex_PoolInit();
+    Ob_Init();
 
     Log(INFO, "early initialization done");
 }
