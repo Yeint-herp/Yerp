@@ -9,6 +9,12 @@ typedef struct Mm_VaLayout
     uptr PfnDbBase;
     uptr PfnDbSize;
 
+    uptr DynamicSpaceBase;
+    uptr DynamicSpaceSize;
+
+    uptr ModuleSpaceBase;
+    uptr ModuleSpaceSize;
+
     uptr KernelImageBase;
     uptr KernelImageSize;
 } Mm_VaLayout;

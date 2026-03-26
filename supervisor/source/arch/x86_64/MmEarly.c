@@ -19,6 +19,12 @@ void Arch_MmLayoutInit()
     s_Layout.PfnDbBase = 0xFFFFC00000000000ULL;
     s_Layout.PfnDbSize = 0x0000200000000000ULL;
 
+    s_Layout.DynamicSpaceBase = 0xFFFFF00000000000ULL;
+    s_Layout.DynamicSpaceSize = 0x00000F0000000000ULL;
+
+    s_Layout.ModuleSpaceBase = AlignUp((uptr)__end, PAGE_SIZE);
+    s_Layout.ModuleSpaceSize = 0xFFFFFFFFFFFFFFFF - s_Layout.ModuleSpaceBase;
+
     s_Layout.KernelImageBase = (uptr)__start;
     s_Layout.KernelImageSize = __end - __start;
 }

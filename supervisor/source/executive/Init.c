@@ -39,15 +39,16 @@ void Exec_InitializeEarly()
         !Boot_LimineHhdmReq.response)
         Panic("critical bootloader requests not fulfilled");
 
+    Arch_MmLayoutInit();
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
 
+    Log(INFO, "hhdm handed of at %#llx", Mm_GetHhdmBase());
     Mm_DumpMemMap(Mm_GetKernelMemMap());
 
     bool hasMultiprocessor = Core_SpcbAllocateAll(Boot_LimineSmpReq.response);
     if (!hasMultiprocessor)
         Log(INFO, "multiprocessor capabilities not detected");
 
-    Arch_MmLayoutInit();
     Mm_PfnDbInit();
     Ex_PoolInit();
     Ob_Init();
