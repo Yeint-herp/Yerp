@@ -1,6 +1,7 @@
 #define DBG_MODULE "Executive"
 
 #include <arch/CpuCap.h>
+#include <arch/MmArch.h>
 #include <arch/Rng.h>
 #include <boot/Limine.h>
 #include <core/Spcb.h>
@@ -10,7 +11,6 @@
 #include <executive/Object.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
-#include <mm/MmLayout.h>
 #include <mm/PfnDb.h>
 #include <mm/Pool.h>
 
