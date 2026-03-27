@@ -9,7 +9,7 @@
 #include <mm/Early.h>
 #include <mm/Magazine.h>
 #include <mm/MemMap.h>
-#include <mm/MmLayout.h>
+#include <mm/Layout.h>
 #include <mm/PfnDb.h>
 
 static Mm_Pfn *s_PfnDatabase        = nullptr;

@@ -4,7 +4,7 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <mm/Early.h>
-#include <mm/MmLayout.h>
+#include <mm/Layout.h>
 #include <mm/PfnDb.h>
 
 static Mm_VaLayout s_Layout = {};
