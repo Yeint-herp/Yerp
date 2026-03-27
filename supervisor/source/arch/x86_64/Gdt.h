@@ -28,8 +28,8 @@ struct [[gnu::packed]] X86_64_TssDescriptor
 struct [[gnu::packed]] X86_64_Gdt
 {
     struct X86_64_GdtEntry      Null;
-    struct X86_64_GdtEntry      KernelCode;
-    struct X86_64_GdtEntry      KernelData;
+    struct X86_64_GdtEntry      SupervisorCode;
+    struct X86_64_GdtEntry      SupervisorData;
     struct X86_64_GdtEntry      UserCode32;
     struct X86_64_GdtEntry      UserData;
     struct X86_64_GdtEntry      UserCode64;

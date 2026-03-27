@@ -25,8 +25,8 @@ void Arch_MmLayoutInit()
     s_Layout.ModuleSpaceBase = AlignUp((uptr)__end, PAGE_SIZE);
     s_Layout.ModuleSpaceSize = 0xFFFFFFFFFFFFFFFF - s_Layout.ModuleSpaceBase;
 
-    s_Layout.KernelImageBase = (uptr)__start;
-    s_Layout.KernelImageSize = __end - __start;
+    s_Layout.SupervisorImageBase = (uptr)__start;
+    s_Layout.SupervisorImageSize = __end - __start;
 }
 
 const Mm_VaLayout *Mm_GetVaLayout(void)

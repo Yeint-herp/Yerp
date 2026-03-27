@@ -15,8 +15,8 @@ typedef struct Mm_VaLayout
     uptr ModuleSpaceBase;
     uptr ModuleSpaceSize;
 
-    uptr KernelImageBase;
-    uptr KernelImageSize;
+    uptr SupervisorImageBase;
+    uptr SupervisorImageSize;
 } Mm_VaLayout;
 
 const Mm_VaLayout *Mm_GetVaLayout(void);

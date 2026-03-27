@@ -47,10 +47,10 @@
 .globl IsrCommonInterruptStub
 IsrCommonInterruptStub:
     test qword ptr [rsp + 24], 3
-    jz .kernel_mode
+    jz .ring0
 
     swapgs
-.kernel_mode:
+.ring0:
     sub rsp, TF_REGS_OFF + (16 * 8)
 
     mov qword ptr [rsp + TF_R15_OFF], r15
@@ -114,10 +114,10 @@ IsrCommonInterruptStub:
     add rsp, TF_HW_OFF
 
     test qword ptr [rsp + 8], 3
-    jz .return_kernel
+    jz .return_ring0
 
     swapgs
-.return_kernel:
+.return_ring0:
     iretq
 .size IsrCommonInterruptStub, .-IsrCommonInterruptStub
 

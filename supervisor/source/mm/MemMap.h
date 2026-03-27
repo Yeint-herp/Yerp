@@ -28,9 +28,9 @@ typedef struct
 
     usize Count;
     usize Capacity;
-} Mm_KernelMemMap;
+} Mm_SupervisorMemMap;
 
 const char *Mm_GetRegionTypeString(Mm_RegionType type);
-void        Mm_DumpMemMap(const Mm_KernelMemMap *map);
+void        Mm_DumpMemMap(const Mm_SupervisorMemMap *map);
 
 #endif /* SUPERVISOR_MM_MEMMAP_H */

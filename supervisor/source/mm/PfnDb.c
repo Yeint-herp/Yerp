@@ -612,7 +612,7 @@ uptr Mm_GetFreePageCount(void)
 
 void Mm_PfnDbInit(void)
 {
-    const Mm_KernelMemMap *memMap = Mm_GetKernelMemMap();
+    const Mm_SupervisorMemMap *memMap = Mm_GetSupervisorMemMap();
     const Mm_VaLayout     *layout = Mm_GetVaLayout();
 
     u64 highestAddress = 0;

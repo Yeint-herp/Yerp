@@ -20,7 +20,7 @@ const char *Mm_GetRegionTypeString(Mm_RegionType type)
         case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
             return "BOOTLOADER_RECLAIMABLE";
         case MEM_TYPE_SUPERVISOR_MODULES:
-            return "KERNEL_AND_MODULES";
+            return "SUPERVISOR_AND_MODULES";
         case MEM_TYPE_FRAMEBUFFER:
             return "FRAMEBUFFER";
         case MEM_TYPE_EARLY_ALLOCATED:
@@ -30,7 +30,7 @@ const char *Mm_GetRegionTypeString(Mm_RegionType type)
     }
 }
 
-void Mm_DumpMemMap(const Mm_KernelMemMap *map)
+void Mm_DumpMemMap(const Mm_SupervisorMemMap *map)
 {
     if (!map || !map->Regions)
     {

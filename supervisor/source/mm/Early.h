@@ -8,7 +8,7 @@ struct limine_memmap_response;
 void  Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset);
 void *Mm_EarlyAllocate(usize size, usize alignment);
 
-const Mm_KernelMemMap *Mm_GetKernelMemMap(void);
+const Mm_SupervisorMemMap *Mm_GetSupervisorMemMap(void);
 u64                    Mm_GetHhdmBase(void);
 
 void *Mm_PhysToVirt(uptr physAddr);

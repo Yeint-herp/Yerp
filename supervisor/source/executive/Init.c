@@ -43,7 +43,7 @@ void Exec_InitializeEarly()
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
 
     Log(INFO, "hhdm handed of at %#llx", Mm_GetHhdmBase());
-    Mm_DumpMemMap(Mm_GetKernelMemMap());
+    Mm_DumpMemMap(Mm_GetSupervisorMemMap());
 
     bool hasMultiprocessor = Core_SpcbAllocateAll(Boot_LimineSmpReq.response);
     if (!hasMultiprocessor)

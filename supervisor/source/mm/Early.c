@@ -10,10 +10,10 @@
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
 
-static Mm_KernelMemMap s_MemMap         = {};
+static Mm_SupervisorMemMap s_MemMap         = {};
 static Core_Spinlock   s_EarlyAllocLock = {};
 
-const Mm_KernelMemMap *Mm_GetKernelMemMap(void)
+const Mm_SupervisorMemMap *Mm_GetSupervisorMemMap(void)
 {
     return &s_MemMap;
 }

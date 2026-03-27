@@ -45,9 +45,9 @@ void X86_64_GdtInit(struct X86_64_Gdt *gdt, struct X86_64_Tss *tss)
 {
     Core_ZeroMemory(&gdt->Null, sizeof gdt->Null);
 
-    s_SetGdtEntry(&gdt->KernelCode, 0x9A, 0x20);
+    s_SetGdtEntry(&gdt->SupervisorCode, 0x9A, 0x20);
 
-    s_SetGdtEntry(&gdt->KernelData, 0x92, 0x00);
+    s_SetGdtEntry(&gdt->SupervisorData, 0x92, 0x00);
 
     s_SetGdtEntry(&gdt->UserCode32, 0xFA, 0x40);
 
