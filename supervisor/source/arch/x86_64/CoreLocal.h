@@ -29,9 +29,9 @@
         __val;                                                                                                         \
     })
 
-#define Arch_WriteCoreLocal8(offset, val)  __asm__ volatile("movb %0, %%gs:%c1" : : "r"((u8)(val)), "i"(offset))
-#define Arch_WriteCoreLocal16(offset, val) __asm__ volatile("movw %0, %%gs:%c1" : : "r"((u16)(val)), "i"(offset))
-#define Arch_WriteCoreLocal32(offset, val) __asm__ volatile("movl %0, %%gs:%c1" : : "r"((u32)(val)), "i"(offset))
-#define Arch_WriteCoreLocal64(offset, val) __asm__ volatile("movq %0, %%gs:%c1" : : "r"((u64)(val)), "i"(offset))
+#define Arch_WriteCoreLocal8(offset, val)  ({ __asm__ volatile("movb %0, %%gs:%c1" : : "r"((u8)(val)), "i"(offset)); })
+#define Arch_WriteCoreLocal16(offset, val) ({ __asm__ volatile("movw %0, %%gs:%c1" : : "r"((u16)(val)), "i"(offset)); })
+#define Arch_WriteCoreLocal32(offset, val) ({ __asm__ volatile("movl %0, %%gs:%c1" : : "r"((u32)(val)), "i"(offset)); })
+#define Arch_WriteCoreLocal64(offset, val) ({ __asm__ volatile("movq %0, %%gs:%c1" : : "r"((u64)(val)), "i"(offset)); })
 
 #endif /* SUPERVISOR_ARCH_X86_64_CORE_LOCAL_H */
