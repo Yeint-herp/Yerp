@@ -13,6 +13,7 @@
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
 #include <mm/Pool.h>
+#include <mm/Vas.h>
 
 void Exec_InitializeEarly()
 {
@@ -53,6 +54,7 @@ void Exec_InitializeEarly()
     Mm_SetPfnReady();
 
     Ex_PoolInit();
+    Mm_SupervisorVasInit();
 
     Ob_Init();
 
