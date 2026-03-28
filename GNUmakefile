@@ -17,7 +17,9 @@ endif
 
 BUILD_ROOT := $(abspath build)/$(ARCH)
 TOOLS_DIR := $(abspath tools)
+LIB_DIR := $(abspath lib)
 BUILD_DIR := $(BUILD_ROOT)/$(MODE)
+LIB_BUILD_DIR := $(BUILD_DIR)/lib
 ISO_DIR := $(BUILD_DIR)/iso_root
 HDD_DIR := $(BUILD_DIR)/hdd_root
 
@@ -25,6 +27,7 @@ HDD_IMG := $(BUILD_DIR)/$(OS_NAME).hdd
 ISO_IMG := $(BUILD_DIR)/$(OS_NAME).iso
 
 SUPERVISOR_ELF := $(BUILD_DIR)/supervisor/bin/supervisor
+LIBACPI := $(LIB_BUILD_DIR)/acpi/libacpi.a
 
 QEMU := qemu-system-x86_64
 XORRISO := xorriso
@@ -52,14 +55,19 @@ QEMUFLAGS := -M q35 -m 2G -cpu max -smp 4 -display sdl \
 			 -debugcon mon:stdio -no-reboot -no-shutdown \
 			 -d int -D $(BUILD_ROOT)/qemu_log.txt
 
-.PHONY: all clean distclean run-hdd run-iso hdd iso supervisor deps
+.PHONY: all clean distclean run-hdd run-iso hdd iso libs supervisor deps
 
 all: run-hdd
 
+libs:
+	@$(MAKE) -C lib MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+
 deps: $(LIMINE_DIR)/limine $(OVMF_CODE)
 
-supervisor:
-	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+supervisor: libs
+	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) \
+		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
 hdd: supervisor deps
 	@mkdir -p $(BUILD_DIR)

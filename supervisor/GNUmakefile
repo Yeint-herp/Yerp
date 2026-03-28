@@ -7,11 +7,15 @@ ARCH ?= x86_64
 TARGET_ASM := x86_64-unknown-none
 TARGET_CC := x86_64-unknown-none-elf
 
-BUILD_DIR ?= ../build/supervisor
+BUILD_DIR ?= $(abspath ../build/$(ARCH)/$(MODE)/supervisor)
+LIB_BUILD_DIR ?= $(abspath ../build/$(ARCH)/$(MODE)/lib)
 BIN_DIR := $(BUILD_DIR)/bin
 OBJ_DIR := $(BUILD_DIR)/obj
 
-TOOLS_DIR ?= ../tools
+LIB_DIR ?= $(abspath ../lib)
+TOOLS_DIR ?= $(abspath ../tools)
+
+LIBACPI := $(LIB_BUILD_DIR)/acpi/libacpi.a
 
 OUTPUT := $(BIN_DIR)/supervisor
 MAP_FILE := $(BIN_DIR)/supervisor.map
@@ -33,7 +37,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -ffreestanding -fno-stack-check -fstack-protector-strong \
                  -fno-pic -fno-omit-frame-pointer -fwrapv -fdollars-in-identifiers \
                  -Wvla -Wshadow \
-                 -isystem. -isystemsource -I$(BUILD_DIR)/include -include const.h \
+                 -isystem. -isystemsource -isystem$(LIB_DIR) -I$(BUILD_DIR)/include -include const.h \
                  $(ARCH_CFLAGS) -DkArch=$(ARCH) $(EXTRA_CFLAGS)
 
 ifeq ($(MODE),debug)
@@ -85,7 +89,7 @@ $(OBJS): $(GENOFF_INC)
 $(OUTPUT): $(OBJS) link.ld
 	@mkdir -p $(dir $@)
 	@echo "[LD] $@ ($(MODE))"
-	@$(LD) $(LDFLAGS) -o $@ $(OBJS)
+	@$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBACPI)
 
 $(OBJ_DIR)/%.o: source/%.c
 	@mkdir -p $(dir $@)
