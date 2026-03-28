@@ -39,7 +39,7 @@ void Exec_InitializeEarly()
         !Boot_LimineHhdmReq.response)
         Panic("critical bootloader requests not fulfilled");
 
-    Arch_MmLayoutInit();
+    Arch_MmInit();
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
 
     Log(INFO, "hhdm handed of at %#llx", Mm_GetHhdmBase());

@@ -23,12 +23,14 @@ uptr Arch_MmQueryMapping(uptr root, uptr virtualAddr);
 void Arch_MmInvalidatePage(uptr virtualAddr);
 void Arch_MmInvalidateRange(uptr virtualAddr, usize pageCount);
 
+void Arch_MmFlushTlbGlobal(void);
+
 uptr Arch_MmCreateUserPageTable(void);
 void Arch_MmDestroyUserPageTable(uptr root);
 
 void Arch_MmSwitchRoot(uptr root);
 uptr Arch_MmGetCurrentRoot(void);
 
-void Arch_MmLayoutInit();
+void Arch_MmInit();
 
 #endif /* SUPERVISOR_ARCH_MMARCH_H */
