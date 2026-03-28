@@ -2,19 +2,23 @@
 
 #include <arch/CoreLocal.h>
 #include <arch/Irq.h>
+#include <arch/MmArch.h>
 #include <core/Memory.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <mm/Early.h>
+#include <mm/Layout.h>
 #include <mm/Magazine.h>
 #include <mm/MemMap.h>
-#include <mm/Layout.h>
 #include <mm/PfnDb.h>
 
 static Mm_Pfn *s_PfnDatabase        = nullptr;
 static uptr    s_HighestPhysicalPfn = 0;
 static uptr    s_TotalPhysicalPages = 0;
+
+static uptr  s_BackingPhysBase  = 0;
+static usize s_BackingPageCount = 0;
 
 Mm_PfnList Mm_ZeroedPageListHead;
 Mm_PfnList Mm_FreePageListHead;
@@ -610,10 +614,115 @@ uptr Mm_GetFreePageCount(void)
     return Mm_ZeroedPageListHead.Total + Mm_FreePageListHead.Total;
 }
 
+static bool s_RegionNeedsPfnTracking(u32 type)
+{
+    switch (type)
+    {
+        case MEM_TYPE_USABLE:
+        case MEM_TYPE_SUPERVISOR_MODULES:
+        case MEM_TYPE_EARLY_ALLOCATED:
+        case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
+        case MEM_TYPE_ACPI_RECLAIMABLE:
+        case MEM_TYPE_BAD_MEMORY:
+        case MEM_TYPE_FRAMEBUFFER:
+            return true;
+        default:
+            return false;
+    }
+}
+
+typedef void (*PfnDbPageCallback)(uptr offset, void *ctx);
+
+static usize s_ForEachPfnDbPage(const Mm_SupervisorMemMap *memMap, PfnDbPageCallback cb, void *ctx)
+{
+    uptr  lastMapped = MM_PFN_NULL;
+    usize count      = 0;
+
+    for (usize i = 0; i < memMap->Count; i++)
+    {
+        const Mm_MemRegion *region = &memMap->Regions[i];
+
+        if (!s_RegionNeedsPfnTracking(region->Type))
+            continue;
+
+        const uptr startPfn    = region->Base >> PAGE_SHIFT;
+        const uptr endPfn      = (region->Base + region->Length) >> PAGE_SHIFT;
+        const uptr dbStartByte = startPfn * sizeof(Mm_Pfn);
+        const uptr dbEndByte   = endPfn * sizeof(Mm_Pfn);
+
+        uptr       mapStart = AlignDown(dbStartByte, PAGE_SIZE);
+        const uptr mapEnd   = AlignUp(dbEndByte, PAGE_SIZE);
+
+        if (lastMapped != MM_PFN_NULL && mapStart <= lastMapped)
+            mapStart = lastMapped + PAGE_SIZE;
+
+        for (uptr offset = mapStart; offset < mapEnd; offset += PAGE_SIZE)
+        {
+            if (cb)
+                cb(offset, ctx);
+
+            count++;
+        }
+
+        if (mapEnd > mapStart)
+            lastMapped = mapEnd - PAGE_SIZE;
+    }
+
+    return count;
+}
+
+typedef struct
+{
+    uptr  root;
+    uptr  pfnDbBase;
+    uptr  physCursor;
+    bool  invalidate;
+    usize mapped;
+} PfnDbMapCtx;
+
+static void s_MapOnePfnDbPage(uptr offset, void *opaque)
+{
+    PfnDbMapCtx *ctx = (PfnDbMapCtx *)opaque;
+
+    uptr va = ctx->pfnDbBase + offset;
+
+    bool ok = Arch_MmMapPage(ctx->root, va, ctx->physCursor, MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL,
+                             MM_CACHE_WRITEBACK);
+    if (!ok)
+        Panic("failed to map PfnDb page at VA %p", va);
+
+    if (ctx->invalidate)
+        Arch_MmInvalidatePage(va);
+
+    ctx->physCursor += PAGE_SIZE;
+    ctx->mapped++;
+}
+
+void Mm_PfnDbMapInto(uptr root)
+{
+    const Mm_SupervisorMemMap *memMap = Mm_GetSupervisorMemMap();
+    const Mm_VaLayout         *layout = Mm_GetVaLayout();
+
+    ASSERT(s_BackingPhysBase != 0);
+
+    PfnDbMapCtx ctx = {
+        .root       = root,
+        .pfnDbBase  = layout->PfnDbBase,
+        .physCursor = s_BackingPhysBase,
+        .invalidate = (root == Arch_MmGetCurrentRoot()),
+        .mapped     = 0,
+    };
+
+    s_ForEachPfnDbPage(memMap, s_MapOnePfnDbPage, &ctx);
+
+    Log(INFO, "PfnDb mapped %zu pages into root %p%s", ctx.mapped, (void *)root,
+        ctx.invalidate ? " (TLB invalidated)" : "");
+}
+
 void Mm_PfnDbInit(void)
 {
     const Mm_SupervisorMemMap *memMap = Mm_GetSupervisorMemMap();
-    const Mm_VaLayout     *layout = Mm_GetVaLayout();
+    const Mm_VaLayout         *layout = Mm_GetVaLayout();
 
     u64 highestAddress = 0;
     for (usize i = 0; i < memMap->Count; i++)
@@ -631,98 +740,18 @@ void Mm_PfnDbInit(void)
 
     Log(INFO, "PfnDb at VA %p, highest PFN #%llu", s_PfnDatabase, s_HighestPhysicalPfn);
 
-    usize totalBackingPages = 0;
-    uptr  lastMappedPage    = MM_PFN_NULL;
-    for (usize i = 0; i < memMap->Count; i++)
-    {
-        const Mm_MemRegion *region = &memMap->Regions[i];
+    s_BackingPageCount = s_ForEachPfnDbPage(memMap, nullptr, nullptr);
 
-        switch (region->Type)
-        {
-            case MEM_TYPE_USABLE:
-            case MEM_TYPE_SUPERVISOR_MODULES:
-            case MEM_TYPE_EARLY_ALLOCATED:
-            case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
-            case MEM_TYPE_ACPI_RECLAIMABLE:
-            case MEM_TYPE_BAD_MEMORY:
-            case MEM_TYPE_FRAMEBUFFER:
-                break;
-            default:
-                continue;
-        }
-
-        const uptr startPfn = region->Base >> PAGE_SHIFT;
-        const uptr endPfn   = (region->Base + region->Length) >> PAGE_SHIFT;
-
-        const uptr dbStartByte = startPfn * sizeof(Mm_Pfn);
-        const uptr dbEndByte   = endPfn * sizeof(Mm_Pfn);
-
-        uptr       mapStart = AlignDown(dbStartByte, PAGE_SIZE);
-        const uptr mapEnd   = AlignUp(dbEndByte, PAGE_SIZE);
-
-        if (lastMappedPage != MM_PFN_NULL && mapStart <= lastMappedPage)
-            mapStart = lastMappedPage + PAGE_SIZE;
-
-        if (mapStart < mapEnd)
-        {
-            totalBackingPages += (mapEnd - mapStart) / PAGE_SIZE;
-            lastMappedPage = mapEnd - PAGE_SIZE;
-        }
-    }
-
-    const usize backingSize = totalBackingPages * PAGE_SIZE;
-    Log(INFO, "allocating %llu pages (%llZ)", totalBackingPages, backingSize);
+    const usize backingSize = s_BackingPageCount * PAGE_SIZE;
+    Log(INFO, "allocating %zu pages (%llZ)", s_BackingPageCount, backingSize);
 
     void *backingBlock = Mm_EarlyAllocate(backingSize, PAGE_SIZE);
     if (!backingBlock)
         Panic("failed to allocate PfnDb backing");
 
-    uptr backingPhysCursor = Mm_VirtToPhys(backingBlock);
-    uptr lastMappedOffset  = MM_PFN_NULL;
+    s_BackingPhysBase = Mm_VirtToPhys(backingBlock);
 
-    for (usize i = 0; i < memMap->Count; i++)
-    {
-        const Mm_MemRegion *region = &memMap->Regions[i];
-
-        switch (region->Type)
-        {
-            case MEM_TYPE_USABLE:
-            case MEM_TYPE_SUPERVISOR_MODULES:
-            case MEM_TYPE_EARLY_ALLOCATED:
-            case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
-            case MEM_TYPE_ACPI_RECLAIMABLE:
-            case MEM_TYPE_BAD_MEMORY:
-            case MEM_TYPE_FRAMEBUFFER:
-                break;
-            default:
-                continue;
-        }
-
-        const uptr startPfn    = region->Base >> PAGE_SHIFT;
-        const uptr endPfn      = (region->Base + region->Length) >> PAGE_SHIFT;
-        const uptr dbStartByte = startPfn * sizeof(Mm_Pfn);
-        const uptr dbEndByte   = endPfn * sizeof(Mm_Pfn);
-
-        uptr       mapStart = AlignDown(dbStartByte, PAGE_SIZE);
-        const uptr mapEnd   = AlignUp(dbEndByte, PAGE_SIZE);
-
-        if (lastMappedOffset != MM_PFN_NULL && mapStart <= lastMappedOffset)
-            mapStart = lastMappedOffset + PAGE_SIZE;
-
-        for (uptr offset = mapStart; offset < mapEnd; offset += PAGE_SIZE)
-        {
-            uptr va = layout->PfnDbBase + offset;
-
-            bool ok = Mm_EarlyMapPage(va, backingPhysCursor, MM_MAP_WRITE | MM_MAP_NOEXEC | MM_MAP_GLOBAL);
-            if (!ok)
-                Panic("failed to map PfnDb page");
-
-            backingPhysCursor += PAGE_SIZE;
-        }
-
-        if (mapEnd > mapStart)
-            lastMappedOffset = mapEnd - PAGE_SIZE;
-    }
+    Mm_PfnDbMapInto(Arch_MmGetCurrentRoot());
 
     s_InitializePfnList(&Mm_ZeroedPageListHead, ZeroedPageList);
     s_InitializePfnList(&Mm_FreePageListHead, FreePageList);
@@ -734,19 +763,8 @@ void Mm_PfnDbInit(void)
     {
         const Mm_MemRegion *region = &memMap->Regions[i];
 
-        switch (region->Type)
-        {
-            case MEM_TYPE_USABLE:
-            case MEM_TYPE_SUPERVISOR_MODULES:
-            case MEM_TYPE_EARLY_ALLOCATED:
-            case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
-            case MEM_TYPE_ACPI_RECLAIMABLE:
-            case MEM_TYPE_BAD_MEMORY:
-            case MEM_TYPE_FRAMEBUFFER:
-                break;
-            default:
-                continue;
-        }
+        if (!s_RegionNeedsPfnTracking(region->Type))
+            continue;
 
         uptr startPfn = region->Base >> PAGE_SHIFT;
         uptr endPfn   = (region->Base + region->Length) >> PAGE_SHIFT;
@@ -780,8 +798,6 @@ void Mm_PfnDbInit(void)
                     entry->ReferenceCount  = 1;
                     break;
 
-                case MEM_TYPE_RESERVED:
-                case MEM_TYPE_ACPI_NVS:
                 default:
                     break;
             }

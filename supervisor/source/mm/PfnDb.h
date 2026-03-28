@@ -145,5 +145,6 @@ uptr Mm_GetTotalPhysicalPages(void);
 uptr Mm_GetFreePageCount(void);
 
 void Mm_PfnDbInit(void);
+void Mm_PfnDbMapInto(uptr root);
 
 #endif /* SUPERVISOR_MM_PFNDB_H */
