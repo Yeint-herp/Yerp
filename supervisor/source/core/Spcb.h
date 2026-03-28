@@ -34,5 +34,6 @@ bool Core_SpcbInit(struct Core_SPCB *spcb);
 bool Core_SpcbLateInit(struct Core_SPCB *spcb);
 
 u32 Core_GetProcessorCount(void);
+struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber);
 
 #endif /* SUPERVISOR_CORE_SPCB_H */

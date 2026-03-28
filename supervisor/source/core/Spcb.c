@@ -69,7 +69,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
             targetSpcbIndex = 0;
 
         s_SpcbArray[targetSpcbIndex].Self            = &s_SpcbArray[targetSpcbIndex];
-        s_SpcbArray[targetSpcbIndex].ProcessorNumber = i;
+        s_SpcbArray[targetSpcbIndex].ProcessorNumber = targetSpcbIndex;
         s_SpcbArray[targetSpcbIndex].ArchId          = Arch_GetArchId(mpResponse->cpus[i]);
 
         mpResponse->cpus[i]->extra_argument = (uptr)&s_SpcbArray[targetSpcbIndex];
@@ -96,4 +96,12 @@ bool Core_SpcbInit(struct Core_SPCB *spcb)
     Arch_SetCoreSpcb(spcb);
 
     return true;
+}
+
+struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
+{
+    if (!s_SpcbArray || processorNumber >= s_CpuCount)
+        return nullptr;
+
+    return &s_SpcbArray[processorNumber];
 }
