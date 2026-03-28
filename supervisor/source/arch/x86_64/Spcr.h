@@ -1,17 +1,24 @@
 #ifndef SUPERVISOR_HARCH_X86_64_SPCR_H
 #define SUPERVISOR_HARCH_X86_64_SPCR_H
 
+#include <arch/Interrupts.h>
 #include <arch/x86_64/Gdt.h>
 #include <arch/x86_64/Idt.h>
 #include <arch/x86_64/Tss.h>
+
+typedef struct
+{
+    uptr  Routine;
+    void *Context;
+} Arch_InterruptRegistration;
 
 struct Arch_SPCR
 {
     struct X86_64_Tss Tss;
     struct X86_64_Gdt Gdt;
 
-    struct X86_64_Idt Idt;
-    uptr              IsrHandlerTable[256];
+    struct X86_64_Idt          Idt;
+    Arch_InterruptRegistration IsrTable[256];
 };
 
 struct limine_mp_response;
