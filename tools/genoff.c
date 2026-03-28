@@ -18,10 +18,10 @@ void generate_offsets(void)
     DEFINE_EQU(X86_64_SPCB_TSS_OFFSET, struct Core_SPCB, ArchData.Tss);
     DEFINE_EQU(X86_64_SPCB_GDT_OFFSET, struct Core_SPCB, ArchData.Gdt);
     DEFINE_EQU(X86_64_SPCB_IDT_OFFSET, struct Core_SPCB, ArchData.Idt);
-    DEFINE_EQU(X86_64_SPCB_ISR_TABLE_OFFSET, struct Core_SPCB, ArchData.IsrHandlerTable);
+    DEFINE_EQU(X86_64_SPCB_ISR_TABLE_OFFSET, struct Core_SPCB, ArchData.IsrTable);
 
     DEFINE_EQU(X86_64_SPCR_TSS_OFFSET, struct Arch_SPCR, Tss);
-    DEFINE_EQU(X86_64_SPCR_ISR_TABLE_OFFSET, struct Arch_SPCR, IsrHandlerTable);
+    DEFINE_EQU(X86_64_SPCR_ISR_TABLE_OFFSET, struct Arch_SPCR, IsrTable);
 #else
 #error "Unsupported architecture for offset generation"
 #endif
