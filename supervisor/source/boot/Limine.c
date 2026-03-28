@@ -21,3 +21,6 @@ volatile struct limine_executable_address_request Boot_LimineExecAddrReq = {.id 
 
 [[gnu::used, gnu::section(".limine_requests")]]
 volatile struct limine_mp_request Boot_LimineSmpReq = {.id = LIMINE_MP_REQUEST_ID, .revision = 0};
+
+[[gnu::used, gnu::section(".limine_requests")]]
+volatile struct limine_rsdp_request Boot_Limine_RsdpReq = {.id = LIMINE_RSDP_REQUEST_ID, .revision = 0};
