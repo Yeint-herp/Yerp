@@ -57,6 +57,8 @@ i32 Ob_CreateObject(Ob_Type *type, u32 flags, void **outObject)
     hdr->ReferenceCount = 1;
     hdr->HandleCount    = 0;
     hdr->NameEntry      = nullptr;
+    hdr->Owner          = ACL_SID_SUPERVISOR;
+    hdr->Acl            = nullptr;
     hdr->PoolTag        = type->Info.PoolTag;
     hdr->Flags          = flags;
 
@@ -78,6 +80,12 @@ void Ob_DestroyObject(void *object)
         Ex_Free(hdr->NameEntry->Name);
         Ex_Free(hdr->NameEntry);
         hdr->NameEntry = nullptr;
+    }
+
+    if (hdr->Acl)
+    {
+        Acl_DestroyAcl(hdr->Acl);
+        hdr->Acl = nullptr;
     }
 
     if (type->Info.DeleteProcedure)
@@ -108,6 +116,21 @@ Ob_Type *Ob_GetDirectoryType(void)
 Ob_Directory *Ob_GetRootDirectory(void)
 {
     return s_RootDirectory;
+}
+
+void Ob_SetObjectSecurity(void *object, Acl_Sid owner, Acl_Acl *acl)
+{
+    Ob_Header *hdr = Ob_HeaderFromBody(object);
+
+    Core_SpinlockAcquire(&hdr->Lock);
+
+    if (hdr->Acl)
+        Acl_DestroyAcl(hdr->Acl);
+
+    hdr->Owner = owner;
+    hdr->Acl   = acl;
+
+    Core_SpinlockRelease(&hdr->Lock);
 }
 
 void Ob_Init(void)

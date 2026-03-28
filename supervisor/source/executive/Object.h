@@ -3,6 +3,7 @@
 
 #include <arch/Atomic.h>
 #include <core/Spinlock.h>
+#include <executive/Acl.h>
 
 enum
 {
@@ -11,7 +12,8 @@ enum
     OB_INSUFFICIENT_RESOURCES,
     OB_NOT_FOUND,
     OB_NAME_COLLISION,
-    OB_TYPE_MISMATCH
+    OB_TYPE_MISMATCH,
+    OB_ACCESS_DENIED,
 };
 
 typedef void (*Ob_DeleteProcedure)(void *Object);
@@ -46,12 +48,17 @@ typedef struct Ob_Header
 
     struct Ob_DirectoryEntry *NameEntry;
 
+    Acl_Sid  Owner;
+    Acl_Acl *Acl;
+
     u32 PoolTag;
     u32 Flags;
 } Ob_Header;
 
 #define Ob_HeaderFromBody(body) ((Ob_Header *)((uptr)(body) - sizeof(Ob_Header)))
 #define Ob_BodyFromHeader(hdr)  ((void *)((uptr)(hdr) + sizeof(Ob_Header)))
+
+void Ob_SetObjectSecurity(void *object, Acl_Sid owner, Acl_Acl *acl);
 
 typedef struct Ob_DirectoryEntry
 {
@@ -106,34 +113,41 @@ void Ob_DestroyObject(void *object);
 void Ob_ReferenceObject(void *object);
 bool Ob_DereferenceObject(void *object);
 
-u32 Ob_GetHandleAccess(Ob_HandleTable *table, Ob_Handle handle);
-
-i32  Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *outHandle);
-i32  Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expectedType, void **outObject);
-void Ob_CloseHandle(Ob_HandleTable *table, Ob_Handle handle);
-
-void Ob_DecrementHandleCount(void *object);
 void Ob_IncrementHandleCount(void *object);
+void Ob_DecrementHandleCount(void *object);
 
 void Ob_InitHandleTable(Ob_HandleTable *table);
 void Ob_DestroyHandleTable(Ob_HandleTable *table);
 
-Ob_Directory *Ob_GetRootDirectory(void);
-i32           Ob_InsertObject(Ob_Directory *dir, void *object, const char *name);
-i32           Ob_LookupObject(Ob_Directory *dir, const char *name, Ob_Type *expectedType, void **outObject);
-i32           Ob_RemoveObject(Ob_Directory *dir, const char *name);
+i32 Ob_InsertHandleRaw(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *outHandle);
+i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 desiredAccess, Acl_Token *token, Ob_Handle *outHandle);
 
-Ob_Type   *Ob_GetObjectType(void *object);
-Ob_Header *Ob_GetHeader(void *object);
-Ob_Type   *Ob_GetDirectoryType(void);
-i32        Ob_GetReferenceCount(void *object);
-i32        Ob_GetHandleCount(void *object);
+i32  Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expectedType, void **outObject);
+void Ob_CloseHandle(Ob_HandleTable *table, Ob_Handle handle);
+u32  Ob_GetHandleAccess(Ob_HandleTable *table, Ob_Handle handle);
+
+i32 Ob_CheckHandleAccess(Ob_HandleTable *table, Ob_Handle handle, u32 requiredAccess);
+
+Ob_Directory *Ob_GetRootDirectory(void);
+Ob_Type      *Ob_GetDirectoryType(void);
+
+i32 Ob_InsertObject(Ob_Directory *dir, void *object, const char *name);
+i32 Ob_LookupObject(Ob_Directory *dir, const char *name, Ob_Type *expectedType, void **outObject);
+i32 Ob_RemoveObject(Ob_Directory *dir, const char *name);
 
 i32 Ob_InsertObjectByPath(const char *path, void *object);
 i32 Ob_LookupObjectByPath(const char *path, Ob_Type *expectedType, void **outObject);
 i32 Ob_RemoveObjectByPath(const char *path);
 
 i32 Ob_CreateDirectory(const char *path, Ob_Directory **outDir);
+
+i32 Ob_OpenObjectByPath(const char *path, Ob_Type *expectedType, u32 desiredAccess, Acl_Token *token,
+                        Ob_HandleTable *table, Ob_Handle *outHandle);
+
+Ob_Type   *Ob_GetObjectType(void *object);
+Ob_Header *Ob_GetHeader(void *object);
+i32        Ob_GetReferenceCount(void *object);
+i32        Ob_GetHandleCount(void *object);
 
 void Ob_Init(void);
 

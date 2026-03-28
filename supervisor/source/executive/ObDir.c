@@ -276,3 +276,21 @@ i32 Ob_CreateDirectory(const char *path, Ob_Directory **outDir)
 
     return OB_SUCCESS;
 }
+
+i32 Ob_OpenObjectByPath(const char *path, Ob_Type *expectedType, u32 desiredAccess, Acl_Token *token,
+                        Ob_HandleTable *table, Ob_Handle *outHandle)
+{
+    if (!path || !token || !table || !outHandle)
+        return OB_INVALID_PARAMETER;
+
+    void *object = nullptr;
+    i32   status = Ob_LookupObjectByPath(path, expectedType, &object);
+
+    if (status != OB_SUCCESS)
+        return status;
+
+    status = Ob_InsertHandle(table, object, desiredAccess, token, outHandle);
+    Ob_DereferenceObject(object);
+
+    return status;
+}

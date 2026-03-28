@@ -73,7 +73,7 @@ static i32 GrowHandleTable(Ob_HandleTable *table)
     return OB_SUCCESS;
 }
 
-i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *outHandle)
+i32 Ob_InsertHandleRaw(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *outHandle)
 {
     if (!table || !object || !outHandle)
         return OB_INVALID_PARAMETER;
@@ -104,6 +104,24 @@ i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *
 
     *outHandle = (Ob_Handle)index;
     return OB_SUCCESS;
+}
+
+i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 desiredAccess, Acl_Token *token, Ob_Handle *outHandle)
+{
+    if (!table || !object || !outHandle || !token)
+        return OB_INVALID_PARAMETER;
+
+    Ob_Header *hdr = Ob_HeaderFromBody(object);
+
+    if (desiredAccess & ~hdr->Type->Info.ValidAccessMask)
+        return OB_INVALID_PARAMETER;
+
+    u32 granted = Acl_ComputeAccess(hdr->Acl, token, desiredAccess);
+
+    if ((granted & desiredAccess) != desiredAccess)
+        return OB_ACCESS_DENIED;
+
+    return Ob_InsertHandleRaw(table, object, granted, outHandle);
 }
 
 i32 Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expectedType, void **outObject)
@@ -180,4 +198,14 @@ u32 Ob_GetHandleAccess(Ob_HandleTable *table, Ob_Handle handle)
     Core_SpinlockRelease(&table->Lock);
 
     return access;
+}
+
+i32 Ob_CheckHandleAccess(Ob_HandleTable *table, Ob_Handle handle, u32 requiredAccess)
+{
+    const u32 granted = Ob_GetHandleAccess(table, handle);
+
+    if ((granted & requiredAccess) != requiredAccess)
+        return OB_ACCESS_DENIED;
+
+    return OB_SUCCESS;
 }

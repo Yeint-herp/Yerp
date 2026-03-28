@@ -1,5 +1,6 @@
 #ifdef CI_BUILD
 
+#include <executive/Acl.h>
 #include <executive/Object.h>
 #include <mm/Pool.h>
 #include <tests/CiTest.h>
@@ -48,6 +49,27 @@ static Ob_Type *CreateTestType(const char *name)
     };
 
     return Ob_CreateType(&info);
+}
+
+static Acl_Token *CreateSystemToken(void)
+{
+    Acl_Token *token = nullptr;
+    Acl_CreateToken(ACL_SID_SUPERVISOR, nullptr, 0, ACL_PRIV_BYPASS_ACL, &token);
+    return token;
+}
+
+static Acl_Token *CreateUserToken(Acl_Sid owner, u32 privileges)
+{
+    Acl_Token *token = nullptr;
+    Acl_CreateToken(owner, nullptr, 0, privileges, &token);
+    return token;
+}
+
+static Acl_Token *CreateUserTokenWithGroups(Acl_Sid owner, const Acl_Sid *groups, u32 groupCount, u32 privileges)
+{
+    Acl_Token *token = nullptr;
+    Acl_CreateToken(owner, groups, groupCount, privileges, &token);
+    return token;
 }
 
 CI_TEST("ob: type registration", TestTypeCreate)
@@ -149,7 +171,7 @@ CI_TEST("ob: handle insert and reference", TestHandleBasic)
     Ob_InitHandleTable(&table);
 
     Ob_Handle h      = OB_HANDLE_NULL;
-    i32       status = Ob_InsertHandle(&table, obj, 0x3, &h);
+    i32       status = Ob_InsertHandleRaw(&table, obj, 0x3, &h);
     if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
     {
         Ob_DereferenceObject(obj);
@@ -211,8 +233,8 @@ CI_TEST("ob: handle close invokes close proc", TestHandleClose)
     Ob_InitHandleTable(&table);
 
     Ob_Handle h1, h2;
-    Ob_InsertHandle(&table, obj, 0x1, &h1);
-    Ob_InsertHandle(&table, obj, 0x2, &h2);
+    Ob_InsertHandleRaw(&table, obj, 0x1, &h1);
+    Ob_InsertHandleRaw(&table, obj, 0x2, &h2);
 
     if (Ob_GetHandleCount(obj) != 2)
     {
@@ -250,7 +272,7 @@ CI_TEST("ob: handle type mismatch", TestHandleTypeMismatch)
     Ob_InitHandleTable(&table);
 
     Ob_Handle h;
-    Ob_InsertHandle(&table, obj, 0x1, &h);
+    Ob_InsertHandleRaw(&table, obj, 0x1, &h);
 
     TestBody *result = nullptr;
     i32       status = Ob_ReferenceByHandle(&table, h, typeB, (void **)&result);
@@ -277,7 +299,7 @@ CI_TEST("ob: handle table growth", TestHandleGrowth)
     Ob_Handle handles[OB_HANDLE_TABLE_INITIAL_SIZE + 16];
     for (u32 i = 0; i < OB_HANDLE_TABLE_INITIAL_SIZE + 16; i++)
     {
-        i32 status = Ob_InsertHandle(&table, obj, i, &handles[i]);
+        i32 status = Ob_InsertHandleRaw(&table, obj, i & 0xF, &handles[i]);
         if (status != OB_SUCCESS)
         {
             Ob_DestroyHandleTable(&table);
@@ -322,10 +344,10 @@ CI_TEST("ob: handle reuse after close", TestHandleReuse)
     Ob_InitHandleTable(&table);
 
     Ob_Handle h1, h2;
-    Ob_InsertHandle(&table, obj, 0x1, &h1);
+    Ob_InsertHandleRaw(&table, obj, 0x1, &h1);
     Ob_CloseHandle(&table, h1);
 
-    Ob_InsertHandle(&table, obj, 0x2, &h2);
+    Ob_InsertHandleRaw(&table, obj, 0x2, &h2);
     if (h2 != h1)
     {
         Ob_DestroyHandleTable(&table);
@@ -487,6 +509,640 @@ CI_TEST("ob: path-based namespace", TestNamespace)
     Ob_RemoveObjectByPath("\\TestNs");
     Ob_DereferenceObject(sub);
 
+    return true;
+}
+
+CI_TEST("acl: token create and destroy", TestTokenLifecycle)
+{
+    Acl_Token *token  = nullptr;
+    i32        status = Acl_CreateToken(100, nullptr, 0, 0, &token);
+    if (status != 0 || !token)
+        return false;
+
+    if (token->Owner != 100)
+        return false;
+
+    if (token->GroupCount != 0 || token->Groups != nullptr)
+        return false;
+
+    bool freed = Acl_DereferenceToken(token);
+    if (!freed)
+        return false;
+
+    return true;
+}
+
+CI_TEST("acl: token with groups", TestTokenGroups)
+{
+    Acl_Sid groups[] = {10, 20, 30};
+
+    Acl_Token *token = nullptr;
+    Acl_CreateToken(5, groups, 3, 0, &token);
+
+    if (token->GroupCount != 3)
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (!Acl_TokenMatchesSid(token, 5))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (!Acl_TokenMatchesSid(token, 20))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (Acl_TokenMatchesSid(token, 99))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (!Acl_TokenMatchesSid(token, ACL_SID_EVERYONE))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    Acl_DereferenceToken(token);
+    return true;
+}
+
+CI_TEST("acl: token refcounting", TestTokenRefCount)
+{
+    Acl_Token *token = nullptr;
+    Acl_CreateToken(1, nullptr, 0, 0, &token);
+
+    Acl_ReferenceToken(token);
+    Acl_ReferenceToken(token);
+
+    if (Acl_DereferenceToken(token))
+        return false;
+
+    if (Acl_DereferenceToken(token))
+        return false;
+
+    if (!Acl_DereferenceToken(token))
+        return false;
+
+    return true;
+}
+
+CI_TEST("acl: privilege check", TestPrivilegeCheck)
+{
+    Acl_Token *token = CreateUserToken(1, ACL_PRIV_DEBUG_PROCESS | ACL_PRIV_TAKE_OWNER);
+
+    if (!Acl_HasPrivilege(token, ACL_PRIV_DEBUG_PROCESS))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (!Acl_HasPrivilege(token, ACL_PRIV_TAKE_OWNER))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (Acl_HasPrivilege(token, ACL_PRIV_BYPASS_ACL))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    if (Acl_HasPrivilege(token, ACL_PRIV_DEBUG_PROCESS | ACL_PRIV_BYPASS_ACL))
+    {
+        Acl_DereferenceToken(token);
+        return false;
+    }
+
+    Acl_DereferenceToken(token);
+    return true;
+}
+
+CI_TEST("acl: null acl grants all", TestNullAclGrantsAll)
+{
+    Acl_Token *token = CreateUserToken(42, 0);
+
+    u32 granted = Acl_ComputeAccess(nullptr, token, 0xF);
+    Acl_DereferenceToken(token);
+
+    return granted == 0xF;
+}
+
+CI_TEST("acl: bypass privilege grants all", TestBypassGrantsAll)
+{
+    Acl_Token *token = CreateSystemToken();
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_DENY;
+    acl->Entries[0].Sid        = ACL_SID_SUPERVISOR;
+    acl->Entries[0].AccessMask = 0xF;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0xF;
+}
+
+CI_TEST("acl: allow entry grants access", TestAclAllow)
+{
+    Acl_Token *token = CreateUserToken(42, 0);
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Sid        = 42;
+    acl->Entries[0].AccessMask = 0x3;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0x3;
+}
+
+CI_TEST("acl: deny overrides allow", TestAclDenyOverride)
+{
+    Acl_Token *token = CreateUserToken(42, 0);
+
+    Acl_Acl *acl               = Acl_CreateAcl(2);
+    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Sid        = 42;
+    acl->Entries[0].AccessMask = 0xF;
+
+    acl->Entries[1].Type       = ACL_ACE_DENY;
+    acl->Entries[1].Sid        = 42;
+    acl->Entries[1].AccessMask = 0xC;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0x3;
+}
+
+CI_TEST("acl: non-matching sid gets nothing", TestAclNoMatch)
+{
+    Acl_Token *token = CreateUserToken(42, 0);
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Sid        = 99;
+    acl->Entries[0].AccessMask = 0xF;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0;
+}
+
+CI_TEST("acl: group membership grants access", TestAclGroupMatch)
+{
+    Acl_Sid    groups[] = {100};
+    Acl_Token *token    = CreateUserTokenWithGroups(42, groups, 1, 0);
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Sid        = 100;
+    acl->Entries[0].AccessMask = 0x5;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0x5;
+}
+
+CI_TEST("acl: everyone sid matches any token", TestAclEveryoneMatch)
+{
+    Acl_Token *token = CreateUserToken(42, 0);
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Sid        = ACL_SID_EVERYONE;
+    acl->Entries[0].AccessMask = 0x1;
+
+    u32 granted = Acl_ComputeAccess(acl, token, 0xF);
+
+    Acl_DestroyAcl(acl);
+    Acl_DereferenceToken(token);
+
+    return granted == 0x1;
+}
+
+CI_TEST("acl: simple acl creation", TestAclCreateSimple)
+{
+    Acl_Acl *acl = Acl_CreateSimple(42, 0xF, 0x1);
+    if (!acl)
+        return false;
+
+    if (acl->Count != 2)
+    {
+        Acl_DestroyAcl(acl);
+        return false;
+    }
+
+    Acl_Token *owner   = CreateUserToken(42, 0);
+    u32        granted = Acl_ComputeAccess(acl, owner, 0xF);
+    Acl_DereferenceToken(owner);
+
+    if (granted != 0xF)
+    {
+        Acl_DestroyAcl(acl);
+        return false;
+    }
+
+    Acl_Token *other = CreateUserToken(99, 0);
+    granted          = Acl_ComputeAccess(acl, other, 0xF);
+    Acl_DereferenceToken(other);
+
+    if (granted != 0x1)
+    {
+        Acl_DestroyAcl(acl);
+        return false;
+    }
+
+    Acl_DestroyAcl(acl);
+    return true;
+}
+
+CI_TEST("acl: simple acl no others", TestAclCreateSimpleNoOthers)
+{
+    Acl_Acl *acl = Acl_CreateSimple(42, 0xF, 0);
+    if (!acl)
+        return false;
+
+    if (acl->Count != 1)
+    {
+        Acl_DestroyAcl(acl);
+        return false;
+    }
+
+    Acl_Token *other   = CreateUserToken(99, 0);
+    u32        granted = Acl_ComputeAccess(acl, other, 0xF);
+    Acl_DereferenceToken(other);
+
+    Acl_DestroyAcl(acl);
+    return granted == 0;
+}
+
+CI_TEST("acl: checked insert grants access", TestCheckedInsertAllow)
+{
+    ResetCounters();
+    Ob_Type *type = CreateTestType("TestAclHandle");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0x1));
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *owner  = CreateUserToken(42, 0);
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_InsertHandle(&table, obj, 0xF, owner, &h);
+    Acl_DereferenceToken(owner);
+
+    if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    if (Ob_GetHandleAccess(&table, h) != 0xF)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: checked insert denies excess access", TestCheckedInsertDeny)
+{
+    Ob_Type *type = CreateTestType("TestAclDeny");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0x1));
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *other  = CreateUserToken(99, 0);
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_InsertHandle(&table, obj, 0xF, other, &h);
+    Acl_DereferenceToken(other);
+
+    if (status != OB_ACCESS_DENIED)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: checked insert with subset access", TestCheckedInsertSubset)
+{
+    Ob_Type *type = CreateTestType("TestAclSubset");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0x3));
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *other  = CreateUserToken(99, 0);
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_InsertHandle(&table, obj, 0x1, other, &h);
+    Acl_DereferenceToken(other);
+
+    if (status != OB_SUCCESS)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    if (Ob_GetHandleAccess(&table, h) != 0x1)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: checked insert rejects invalid access bits", TestCheckedInsertInvalidBits)
+{
+    Ob_Type *type = CreateTestType("TestAclInvalid");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *token  = CreateSystemToken();
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_InsertHandle(&table, obj, 0xFF, token, &h);
+    Acl_DereferenceToken(token);
+
+    if (status != OB_INVALID_PARAMETER)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: bypass privilege skips acl on insert", TestCheckedInsertBypass)
+{
+    Ob_Type *type = CreateTestType("TestAclBypass");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+
+    Acl_Acl *acl               = Acl_CreateAcl(1);
+    acl->Entries[0].Type       = ACL_ACE_DENY;
+    acl->Entries[0].Sid        = ACL_SID_EVERYONE;
+    acl->Entries[0].AccessMask = 0xF;
+    Ob_SetObjectSecurity(obj, 42, acl);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *system = CreateSystemToken();
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_InsertHandle(&table, obj, 0xF, system, &h);
+    Acl_DereferenceToken(system);
+
+    if (status != OB_SUCCESS)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: check handle access pass", TestCheckHandleAccessPass)
+{
+    Ob_Type *type = CreateTestType("TestChkPass");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Ob_Handle h;
+    Ob_InsertHandleRaw(&table, obj, 0x7, &h);
+
+    i32 status = Ob_CheckHandleAccess(&table, h, 0x3);
+    if (status != OB_SUCCESS)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: check handle access fail", TestCheckHandleAccessFail)
+{
+    Ob_Type *type = CreateTestType("TestChkFail");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Ob_Handle h;
+    Ob_InsertHandleRaw(&table, obj, 0x1, &h);
+
+    i32 status = Ob_CheckHandleAccess(&table, h, 0x3);
+    if (status != OB_ACCESS_DENIED)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_DereferenceObject(obj);
+    return true;
+}
+
+CI_TEST("acl: open by path allowed", TestOpenByPathAllow)
+{
+    ResetCounters();
+    Ob_Type *type = CreateTestType("TestOpenAllow");
+
+    Ob_Directory *sub = nullptr;
+    Ob_CreateDirectory("\\TestOpen", &sub);
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+    obj->Value = 0xABCD;
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0x1));
+
+    Ob_InsertObjectByPath("\\TestOpen\\Gadget", obj);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *owner  = CreateUserToken(42, 0);
+    Ob_Handle  h      = OB_HANDLE_NULL;
+    i32        status = Ob_OpenObjectByPath("\\TestOpen\\Gadget", type, 0xF, owner, &table, &h);
+    Acl_DereferenceToken(owner);
+
+    if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_RemoveObjectByPath("\\TestOpen\\Gadget");
+        Ob_DereferenceObject(obj);
+        Ob_RemoveObjectByPath("\\TestOpen");
+        Ob_DereferenceObject(sub);
+        return false;
+    }
+
+    TestBody *result = nullptr;
+    status           = Ob_ReferenceByHandle(&table, h, type, (void **)&result);
+    if (status != OB_SUCCESS || result->Value != 0xABCD)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_RemoveObjectByPath("\\TestOpen\\Gadget");
+        Ob_DereferenceObject(obj);
+        Ob_RemoveObjectByPath("\\TestOpen");
+        Ob_DereferenceObject(sub);
+        return false;
+    }
+    Ob_DereferenceObject(result);
+
+    Ob_DestroyHandleTable(&table);
+    Ob_RemoveObjectByPath("\\TestOpen\\Gadget");
+    Ob_DereferenceObject(obj);
+    Ob_RemoveObjectByPath("\\TestOpen");
+    Ob_DereferenceObject(sub);
+    return true;
+}
+
+CI_TEST("acl: open by path denied", TestOpenByPathDeny)
+{
+    Ob_Type *type = CreateTestType("TestOpenDeny");
+
+    Ob_Directory *sub = nullptr;
+    Ob_CreateDirectory("\\TestOpenD", &sub);
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0));
+
+    Ob_InsertObjectByPath("\\TestOpenD\\Secret", obj);
+
+    Ob_HandleTable table;
+    Ob_InitHandleTable(&table);
+
+    Acl_Token *outsider = CreateUserToken(99, 0);
+    Ob_Handle  h        = OB_HANDLE_NULL;
+    i32        status   = Ob_OpenObjectByPath("\\TestOpenD\\Secret", type, 0x1, outsider, &table, &h);
+    Acl_DereferenceToken(outsider);
+
+    if (status != OB_ACCESS_DENIED)
+    {
+        Ob_DestroyHandleTable(&table);
+        Ob_RemoveObjectByPath("\\TestOpenD\\Secret");
+        Ob_DereferenceObject(obj);
+        Ob_RemoveObjectByPath("\\TestOpenD");
+        Ob_DereferenceObject(sub);
+        return false;
+    }
+
+    Ob_DestroyHandleTable(&table);
+    Ob_RemoveObjectByPath("\\TestOpenD\\Secret");
+    Ob_DereferenceObject(obj);
+    Ob_RemoveObjectByPath("\\TestOpenD");
+    Ob_DereferenceObject(sub);
+    return true;
+}
+
+CI_TEST("acl: object security update", TestSetObjectSecurity)
+{
+    Ob_Type *type = CreateTestType("TestSecUpdate");
+
+    TestBody *obj = nullptr;
+    Ob_CreateObject(type, 0, (void **)&obj);
+
+    Ob_Header *hdr = Ob_GetHeader(obj);
+    if (hdr->Acl != nullptr || hdr->Owner != ACL_SID_SUPERVISOR)
+    {
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_SetObjectSecurity(obj, 42, Acl_CreateSimple(42, 0xF, 0));
+
+    if (hdr->Owner != 42 || hdr->Acl == nullptr)
+    {
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_SetObjectSecurity(obj, 99, Acl_CreateSimple(99, 0x3, 0x1));
+
+    if (hdr->Owner != 99)
+    {
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Acl_Token *owner   = CreateUserToken(99, 0);
+    u32        granted = Acl_ComputeAccess(hdr->Acl, owner, 0xF);
+    Acl_DereferenceToken(owner);
+
+    if (granted != 0x3)
+    {
+        Ob_DereferenceObject(obj);
+        return false;
+    }
+
+    Ob_DereferenceObject(obj);
     return true;
 }
 
