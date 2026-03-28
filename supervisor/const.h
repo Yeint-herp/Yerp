@@ -26,6 +26,10 @@ typedef uptr vaddr_t;
 #define Bit_FirstSetIndex(x)   __builtin_ctz(x)
 #define Bit_FirstClearIndex(x) Bit_FirstSetIndex(~x)
 
+#define Bitmap_TestBit(bitmap, vec) (Arch_AtomicLoad32(&(bitmap)[(vec) / 32]) & (1u << ((vec) % 32)))
+#define Bitmap_SetBit(bitmap, vec) Arch_AtomicAdd32(&(bitmap)[(vec) / 32], 1u << ((vec) % 32))
+#define Bitmap_ClearBit(bitmap, vec) Arch_AtomicSub32(&(bitmap)[(vec) / 32], 1u << ((vec) % 32))
+
 #ifndef offsetof
 #define offsetof(type, member) __builtin_offsetof(type, member)
 #endif
