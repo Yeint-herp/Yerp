@@ -26,8 +26,8 @@ typedef uptr vaddr_t;
 #define Bit_FirstSetIndex(x)   __builtin_ctz(x)
 #define Bit_FirstClearIndex(x) Bit_FirstSetIndex(~x)
 
-#define Bitmap_TestBit(bitmap, vec) (Arch_AtomicLoad32(&(bitmap)[(vec) / 32]) & (1u << ((vec) % 32)))
-#define Bitmap_SetBit(bitmap, vec) Arch_AtomicAdd32(&(bitmap)[(vec) / 32], 1u << ((vec) % 32))
+#define Bitmap_TestBit(bitmap, vec)  (Arch_AtomicLoad32(&(bitmap)[(vec) / 32]) & (1u << ((vec) % 32)))
+#define Bitmap_SetBit(bitmap, vec)   Arch_AtomicAdd32(&(bitmap)[(vec) / 32], 1u << ((vec) % 32))
 #define Bitmap_ClearBit(bitmap, vec) Arch_AtomicSub32(&(bitmap)[(vec) / 32], 1u << ((vec) % 32))
 
 #ifndef offsetof
@@ -44,5 +44,12 @@ typedef uptr vaddr_t;
         const typeof(((type *)0)->member) *__mptr = (ptr);                                                             \
         (type *)((char *)__mptr - offsetof(type, member));                                                             \
     })
+
+#define _MacroArgCount(_1, _2, _3, _4, _5, _6, _7, _8, N, ...) N
+#define MacroArgCount(...)                                     _MacroArgCount(__VA_ARGS__, 8, 7, 6, 5, 4, 3, 2, 1)
+
+#define _MacroConcat(a, b)       a##b
+#define MacroConcat(a, b)        _MacroConcat(a, b)
+#define MacroDispatch(base, ...) MacroConcat(base, MacroArgCount(__VA_ARGS__))(__VA_ARGS__)
 
 #endif /* SUPERVISOR_CONST_H */
