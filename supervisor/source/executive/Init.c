@@ -1,5 +1,6 @@
 #define DBG_MODULE "Executive"
 
+#include <acpi/Acpi.h>
 #include <arch/CpuCap.h>
 #include <arch/MmArch.h>
 #include <arch/Rng.h>
@@ -55,6 +56,8 @@ void Exec_InitializeEarly()
 
     Ex_PoolInit();
     Mm_SupervisorVasInit();
+
+    Acpi_EarlyInit();
 
     Ob_Init();
 
