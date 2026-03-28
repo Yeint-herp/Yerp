@@ -205,9 +205,11 @@ static void s_FmtSigned(Dbg_FmtContext *ctx, i64 value, u32 base, bool uppercase
 typedef struct
 {
     u32  width;
+    u32  precision;
     char pad;
     bool leftAlign;
     bool altForm;
+    bool hasPrecision;
 
     enum
     {
@@ -223,11 +225,13 @@ typedef struct
 
 static const char *s_ParseSpec(const char *fmt, FmtSpec *spec)
 {
-    spec->width     = 0;
-    spec->pad       = ' ';
-    spec->leftAlign = false;
-    spec->altForm   = false;
-    spec->length    = LEN_DEFAULT;
+    spec->width        = 0;
+    spec->precision    = 0;
+    spec->pad          = ' ';
+    spec->leftAlign    = false;
+    spec->altForm      = false;
+    spec->hasPrecision = false;
+    spec->length       = LEN_DEFAULT;
 
     for (;;)
         if (*fmt == '-')
@@ -255,6 +259,18 @@ static const char *s_ParseSpec(const char *fmt, FmtSpec *spec)
     {
         spec->width = spec->width * 10 + (*fmt - '0');
         fmt++;
+    }
+
+    if (*fmt == '.')
+    {
+        spec->hasPrecision = true;
+        fmt++;
+
+        while (*fmt >= '0' && *fmt <= '9')
+        {
+            spec->precision = spec->precision * 10 + (*fmt - '0');
+            fmt++;
+        }
     }
 
     if (fmt[0] == 'h' && fmt[1] == 'h')
@@ -442,23 +458,50 @@ void Dbg_FmtVprintf(Dbg_FmtContext *ctx, const char *fmt, Core_VarArgs ap)
 
             case 's':
             {
-                const char *str = Core_VarArg(ap, const char *);
-                if (!str)
-                    str = "(null)";
+                if (spec.hasPrecision && spec.precision == 0)
+                {
+                    usize       len = Core_VarArg(ap, usize);
+                    const char *str = Core_VarArg(ap, const char *);
+                    if (!str)
+                    {
+                        str = "(null)";
+                        len = 6;
+                    }
 
-                usize len = 0;
-                while (str[len])
-                    len++;
+                    if (!spec.leftAlign)
+                        for (usize i = len; i < spec.width; i++)
+                            Dbg_FmtChar(ctx, ' ');
 
-                if (!spec.leftAlign)
-                    for (usize i = len; i < spec.width; i++)
-                        Dbg_FmtChar(ctx, ' ');
+                    Dbg_FmtString(ctx, str, len);
 
-                Dbg_FmtString(ctx, str, len);
+                    if (spec.leftAlign)
+                        for (usize i = len; i < spec.width; i++)
+                            Dbg_FmtChar(ctx, ' ');
+                }
+                else
+                {
+                    const char *str = Core_VarArg(ap, const char *);
+                    if (!str)
+                        str = "(null)";
 
-                if (spec.leftAlign)
-                    for (usize i = len; i < spec.width; i++)
-                        Dbg_FmtChar(ctx, ' ');
+                    usize len = 0;
+                    if (spec.hasPrecision)
+                        while (len < spec.precision && str[len])
+                            len++;
+                    else
+                        while (str[len])
+                            len++;
+
+                    if (!spec.leftAlign)
+                        for (usize i = len; i < spec.width; i++)
+                            Dbg_FmtChar(ctx, ' ');
+
+                    Dbg_FmtString(ctx, str, len);
+
+                    if (spec.leftAlign)
+                        for (usize i = len; i < spec.width; i++)
+                            Dbg_FmtChar(ctx, ' ');
+                }
 
                 break;
             }
@@ -610,7 +653,7 @@ static const char *s_LevelTags[] = {
     [DBG_WARN] = "WARN ",  [DBG_ERROR] = "ERROR", [DBG_FATAL] = "FATAL",
 };
 
-void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...)
+void Dbg_VLogInner(Dbg_Level level, const char *module, const char *fmt, Core_VarArgs ap)
 {
     char           buf[DBG_STACK_BUF_SIZE];
     Dbg_FmtContext ctx = {
@@ -634,11 +677,16 @@ void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...)
     Dbg_FmtChar(&ctx, ':');
     Dbg_FmtChar(&ctx, ' ');
 
-    Core_VarArgs ap;
-    Core_VarArgStart(ap);
     Dbg_FmtVprintf(&ctx, fmt, ap);
-    Core_VarArgEnd(ap);
 
     Dbg_FmtChar(&ctx, '\n');
     Dbg_FmtFlush(&ctx);
+}
+
+void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...)
+{
+    Core_VarArgs ap;
+    Core_VarArgStart(ap);
+    Dbg_VLogInner(level, module, fmt, ap);
+    Core_VarArgEnd(ap);
 }

@@ -48,6 +48,7 @@ void Dbg_Print(const char *fmt, ...);
 void Dbg_PrintEx(const char *fmt, Dbg_SinkerMask mask, ...);
 
 void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...);
+void Dbg_VLogInner(Dbg_Level level, const char *module, const char *fmt, Core_VarArgs ap);
 
 usize Dbg_BufferPrint(char *buf, usize size, const char *fmt, ...);
 
