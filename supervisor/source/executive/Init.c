@@ -39,8 +39,8 @@ void Exec_InitializeEarly()
         !Boot_LimineHhdmReq.response)
         Panic("critical bootloader requests not fulfilled");
 
-    Arch_MmInit();
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
+    Arch_MmInit();
 
     Log(INFO, "hhdm handed of at %#llx", Mm_GetHhdmBase());
     Mm_DumpMemMap(Mm_GetSupervisorMemMap());
@@ -50,7 +50,10 @@ void Exec_InitializeEarly()
         Log(INFO, "multiprocessor capabilities not detected");
 
     Mm_PfnDbInit();
+    Mm_SetPfnReady();
+
     Ex_PoolInit();
+
     Ob_Init();
 
     Log(INFO, "early initialization done");

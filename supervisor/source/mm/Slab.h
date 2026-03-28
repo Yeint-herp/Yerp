@@ -40,7 +40,6 @@ void  Mm_SlabFree(void *ptr);
 
 void Mm_SlabReap(void);
 
-void Mm_SlabSetPoolReady(void);
 void Mm_SlabDumpStats(void);
 
 #endif /* SUPERVISOR_MM_SLAB_H */

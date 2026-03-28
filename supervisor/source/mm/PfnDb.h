@@ -6,8 +6,15 @@
 #include <mm/Slab.h>
 
 #define MM_PFN_NULL ((uptr) - 1)
-#define PAGE_SHIFT  12
-#define PAGE_SIZE   (1ULL << PAGE_SHIFT)
+
+#define PAGE_SHIFT 12
+#define PAGE_SIZE  (1ULL << PAGE_SHIFT)
+
+#define PAGE_SHIFT_2M 21
+#define PAGE_SIZE_2M  (1ULL << PAGE_SHIFT_2M)
+
+#define PAGE_SHIFT_1G 30
+#define PAGE_SIZE_1G  (1ULL << PAGE_SHIFT_1G)
 
 #define MM_ALLOC_ANY 0U
 

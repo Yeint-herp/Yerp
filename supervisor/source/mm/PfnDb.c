@@ -745,7 +745,7 @@ void Mm_PfnDbInit(void)
     const usize backingSize = s_BackingPageCount * PAGE_SIZE;
     Log(INFO, "allocating %zu pages (%llZ)", s_BackingPageCount, backingSize);
 
-    void *backingBlock = Mm_EarlyAllocate(backingSize, PAGE_SIZE);
+    void *backingBlock = Mm_PermanentAllocate(backingSize, PAGE_SIZE);
     if (!backingBlock)
         Panic("failed to allocate PfnDb backing");
 

@@ -36,7 +36,6 @@ void Ex_PoolInit(void)
         usize objSize = 1ULL << (POOL_MIN_SHIFT + i);
         Mm_SlabCacheInit(&s_Buckets[i], s_BucketNames[i], objSize, sizeof(void *));
     }
-    Mm_SlabSetPoolReady();
 
     Log(INFO, "pool initialized (%zu size classes)", POOL_BUCKET_COUNT);
 }
@@ -101,5 +100,5 @@ void Ex_Free(void *ptr)
         return;
     }
 
-    Panic("Ex_Free: invlaid pointer %p (PFN %llu)", ptr, pfn);
+    Panic("Ex_Free: invalid pointer %p (PFN %llu)", ptr, pfn);
 }

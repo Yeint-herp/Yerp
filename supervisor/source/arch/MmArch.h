@@ -18,6 +18,8 @@ typedef enum Mm_CacheType
 bool Arch_MmMapPage(uptr root, uptr virtualAddr, uptr physAddr, u32 prot, Mm_CacheType cacheType);
 void Arch_MmUnmapPage(uptr root, uptr virtualAddr);
 
+usize Arch_MmMapRegion(uptr root, uptr virtualAddr, uptr physAddr, usize size, u32 prot, Mm_CacheType cacheType);
+
 uptr Arch_MmQueryMapping(uptr root, uptr virtualAddr);
 
 void Arch_MmInvalidatePage(uptr virtualAddr);

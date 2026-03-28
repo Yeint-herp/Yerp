@@ -10,8 +10,12 @@
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
 
-static Mm_SupervisorMemMap s_MemMap         = {};
-static Core_Spinlock   s_EarlyAllocLock = {};
+static Mm_SupervisorMemMap s_MemMap    = {};
+static Core_Spinlock       s_AllocLock = {};
+
+static bool  s_PfnReady   = false;
+static void *s_BumpPage   = nullptr;
+static usize s_BumpOffset = PAGE_SIZE;
 
 const Mm_SupervisorMemMap *Mm_GetSupervisorMemMap(void)
 {
@@ -33,6 +37,17 @@ void *Mm_PhysToVirt(uptr physAddr)
 uptr Mm_VirtToPhys(void *virtAddr)
 {
     return (uptr)virtAddr - Mm_GetHhdmBase();
+}
+
+void Mm_SetPfnReady(void)
+{
+    s_PfnReady = true;
+    Log(INFO, "permanent allocator switched to PFN-backed mode");
+}
+
+bool Mm_IsPfnReady(void)
+{
+    return s_PfnReady;
 }
 
 static Mm_RegionType s_TranslateLimineType(u64 limineType)
@@ -97,7 +112,6 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
         {
             arrayPhys  = entry->base + entry->length - arraySize;
             foundSpace = true;
-
             entry->length -= arraySize;
             break;
         }
@@ -145,13 +159,8 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
     Log(INFO, "early memory map initialized. %zu entries translated", s_MemMap.Count);
 }
 
-void *Mm_EarlyAllocate(usize size, usize alignment)
+static void *s_CarveFromMemMap(usize size, usize alignment)
 {
-    if (size == 0 || alignment == 0 || (alignment & (alignment - 1)) != 0)
-        return nullptr;
-
-    Arch_IrqFlags flags = Core_SpinlockAcquireIrq(&s_EarlyAllocLock);
-
     u64 allocPhys = 0;
     for (usize i = 0; i < s_MemMap.Count; i++)
     {
@@ -162,8 +171,8 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
         if (reg->Length < size)
             continue;
 
-        u64 regTop      = reg->Base + reg->Length;
-        u64 alignedBase = AlignDown(regTop - size, alignment);
+        const u64 regTop      = reg->Base + reg->Length;
+        const u64 alignedBase = AlignDown(regTop - size, alignment);
 
         if (alignedBase < reg->Base)
             continue;
@@ -173,8 +182,8 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
 
         allocPhys = alignedBase;
 
-        u64 belowLen = alignedBase - reg->Base;
-        u64 aboveLen = regTop - (alignedBase + size);
+        const u64 belowLen = alignedBase - reg->Base;
+        const u64 aboveLen = regTop - (alignedBase + size);
 
         if (belowLen == 0 && aboveLen == 0)
             reg->Type = MEM_TYPE_EARLY_ALLOCATED;
@@ -211,16 +220,67 @@ void *Mm_EarlyAllocate(usize size, usize alignment)
         break;
     }
 
-    Core_SpinlockReleaseIrq(&s_EarlyAllocLock, flags);
-
     if (!allocPhys)
-    {
-        Log(FATAL, "early allocation failed for size %zu", size);
         return nullptr;
+
+    void *ptr = Mm_PhysToVirt(allocPhys);
+    Core_ZeroMemory(ptr, size);
+    return ptr;
+}
+
+static void *s_AllocFromPfn(usize size, usize alignment)
+{
+    if (size >= PAGE_SIZE && alignment <= PAGE_SIZE)
+    {
+        const uptr count = AlignUp(size, PAGE_SIZE) >> PAGE_SHIFT;
+        u32        flags = MM_ALLOC_ZEROED;
+
+        if (count > 1)
+            flags |= MM_ALLOC_CONTIGUOUS;
+
+        const uptr pfn = Mm_AllocatePages(flags, count);
+        if (pfn == MM_PFN_NULL)
+            return nullptr;
+
+        return Mm_PhysToVirt(pfn << PAGE_SHIFT);
     }
 
-    void *virt_ptr = Mm_PhysToVirt(allocPhys);
-    Core_ZeroMemory(virt_ptr, size);
+    usize alignedOff = AlignUp(s_BumpOffset, alignment);
+    if (alignedOff + size > PAGE_SIZE)
+    {
+        uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
+        if (pfn == MM_PFN_NULL)
+            return nullptr;
 
-    return virt_ptr;
+        s_BumpPage   = Mm_PhysToVirt(pfn << PAGE_SHIFT);
+        s_BumpOffset = 0;
+        alignedOff   = 0;
+    }
+
+    void *ptr    = s_BumpPage + alignedOff;
+    s_BumpOffset = alignedOff + size;
+
+    return ptr;
+}
+
+void *Mm_PermanentAllocate(usize size, usize alignment)
+{
+    if (size == 0 || alignment == 0 || (alignment & (alignment - 1)) != 0)
+        return nullptr;
+
+    Arch_IrqFlags flags = Core_SpinlockAcquireIrq(&s_AllocLock);
+
+    void *ptr;
+
+    if (s_PfnReady)
+        ptr = s_AllocFromPfn(size, alignment);
+    else
+        ptr = s_CarveFromMemMap(size, alignment);
+
+    Core_SpinlockReleaseIrq(&s_AllocLock, flags);
+
+    if (!ptr)
+        Log(FATAL, "permanent allocation failed for size %zu", size);
+
+    return ptr;
 }

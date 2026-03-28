@@ -1,5 +1,6 @@
 #define DBG_MODULE "x86_64Mm"
 
+#include <arch/CpuCap.h>
 #include <arch/MmArch.h>
 #include <arch/x86_64/Msr.h>
 #include <core/Memory.h>
@@ -49,11 +50,15 @@ const Mm_VaLayout *Mm_GetVaLayout(void)
 #define X86_PTE_USER     (1ULL << 2)
 #define X86_PTE_PWT      (1ULL << 3)
 #define X86_PTE_PCD      (1ULL << 4)
-#define X86_PTE_PAT      (1ULL << 7)
+#define X86_PTE_HUGE     (1ULL << 7)
+#define X86_PTE_PAT_4K   (1ULL << 7)
 #define X86_PTE_GLOBAL   (1ULL << 8)
+#define X86_PTE_PAT_HUGE (1ULL << 12)
 #define X86_PTE_NX       (1ULL << 63)
 
-#define X86_PTE_ADDR_MASK 0x000FFFFFFFFFF000ULL
+#define X86_PTE_ADDR_MASK    0x000FFFFFFFFFF000ULL
+#define X86_PTE_ADDR_MASK_2M 0x000FFFFFFFE00000ULL
+#define X86_PTE_ADDR_MASK_1G 0x000FFFFFC0000000ULL
 
 #define PML4_INDEX(va) (((va) >> 39) & 0x1FF)
 #define PDPT_INDEX(va) (((va) >> 30) & 0x1FF)
@@ -83,7 +88,7 @@ static u64 s_TranslateProt(u32 prot)
     return pte;
 }
 
-static u64 s_TranslateCacheType(Mm_CacheType cacheType)
+static u64 s_TranslateCacheType(Mm_CacheType cacheType, bool huge)
 {
     switch (cacheType)
     {
@@ -97,7 +102,7 @@ static u64 s_TranslateCacheType(Mm_CacheType cacheType)
             return X86_PTE_PCD | X86_PTE_PWT;
 
         case MM_CACHE_WRITE_COMBINE:
-            return X86_PTE_PAT;
+            return huge ? X86_PTE_PAT_HUGE : X86_PTE_PAT_4K;
 
         default:
             Panic("Mm: invalid cache type %d", cacheType);
@@ -107,16 +112,36 @@ static u64 s_TranslateCacheType(Mm_CacheType cacheType)
 static u64 *s_WalkLevel(u64 *table, usize index, bool allocate)
 {
     if (table[index] & X86_PTE_PRESENT)
+    {
+        if (table[index] & X86_PTE_HUGE)
+            return nullptr;
+
         return s_PhysToTable(table[index]);
+    }
 
     if (!allocate)
         return nullptr;
 
-    void *page = Mm_EarlyAllocate(PAGE_SIZE, PAGE_SIZE);
-    if (!page)
-        return nullptr;
+    void *page;
+    uptr  phys;
 
-    uptr phys = Mm_VirtToPhys(page);
+    if (Mm_IsPfnReady()) [[clang::likely]]
+    {
+        uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
+        if (pfn == MM_PFN_NULL)
+            return nullptr;
+
+        phys = pfn << PAGE_SHIFT;
+        page = Mm_PhysToVirt(phys);
+    }
+    else [[clang::unlikely]]
+    {
+        page = Mm_PermanentAllocate(PAGE_SIZE, PAGE_SIZE);
+        if (!page)
+            return nullptr;
+
+        phys = Mm_VirtToPhys(page);
+    }
 
     table[index] = phys | X86_PTE_PRESENT | X86_PTE_WRITABLE | X86_PTE_USER;
 
@@ -178,7 +203,7 @@ bool Arch_MmMapPage(uptr root, uptr virtualAddr, uptr physAddr, u32 prot, Mm_Cac
         return false;
     }
 
-    pt[index] = (physAddr & X86_PTE_ADDR_MASK) | s_TranslateProt(prot) | s_TranslateCacheType(cacheType);
+    pt[index] = (physAddr & X86_PTE_ADDR_MASK) | s_TranslateProt(prot) | s_TranslateCacheType(cacheType, false);
 
     return true;
 }
@@ -213,39 +238,171 @@ uptr Arch_MmQueryMapping(uptr root, uptr virtualAddr)
 {
     u64 *pml4 = s_PhysToTable(root);
 
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(virtualAddr), false);
-    if (!pdpt)
+    u64 pml4Entry = pml4[PML4_INDEX(virtualAddr)];
+    if (!(pml4Entry & X86_PTE_PRESENT))
         return 0;
 
-    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(virtualAddr), false);
-    if (!pd)
+    u64 *pdpt = s_PhysToTable(pml4Entry);
+
+    u64 pdptEntry = pdpt[PDPT_INDEX(virtualAddr)];
+    if (!(pdptEntry & X86_PTE_PRESENT))
         return 0;
 
-    u64 *pt = s_WalkLevel(pd, PD_INDEX(virtualAddr), false);
-    if (!pt)
+    if (pdptEntry & X86_PTE_HUGE)
+        return (pdptEntry & X86_PTE_ADDR_MASK_1G) | (virtualAddr & (PAGE_SIZE_1G - 1));
+
+    u64 *pd = s_PhysToTable(pdptEntry);
+
+    u64 pdEntry = pd[PD_INDEX(virtualAddr)];
+    if (!(pdEntry & X86_PTE_PRESENT))
         return 0;
 
-    const u64 entry = pt[PT_INDEX(virtualAddr)];
+    if (pdEntry & X86_PTE_HUGE)
+        return (pdEntry & X86_PTE_ADDR_MASK_2M) | (virtualAddr & (PAGE_SIZE_2M - 1));
+
+    u64 *pt = s_PhysToTable(pdEntry);
+
+    u64 entry = pt[PT_INDEX(virtualAddr)];
     if (!(entry & X86_PTE_PRESENT))
         return 0;
 
     return (entry & X86_PTE_ADDR_MASK) | (virtualAddr & (PAGE_SIZE - 1));
 }
 
+static bool s_MapPage1G(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
+{
+    u64 *pml4 = s_PhysToTable(root);
+    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    if (!pdpt)
+        return false;
+
+    const usize index = PDPT_INDEX(va);
+    if (pdpt[index] & X86_PTE_PRESENT)
+        return false;
+
+    pdpt[index] = (pa & X86_PTE_ADDR_MASK_1G) | X86_PTE_HUGE | flags | cacheFlags;
+
+    return true;
+}
+
+static bool s_MapPage2M(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
+{
+    u64 *pml4 = s_PhysToTable(root);
+
+    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    if (!pdpt)
+        return false;
+
+    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(va), true);
+    if (!pd)
+        return false;
+
+    const usize index = PD_INDEX(va);
+    if (pd[index] & X86_PTE_PRESENT)
+        return false;
+
+    pd[index] = (pa & X86_PTE_ADDR_MASK_2M) | X86_PTE_HUGE | flags | cacheFlags;
+
+    return true;
+}
+
+static bool s_MapPage4K(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
+{
+    u64 *pml4 = s_PhysToTable(root);
+
+    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    if (!pdpt)
+        return false;
+
+    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(va), true);
+    if (!pd)
+        return false;
+
+    u64 *pt = s_WalkLevel(pd, PD_INDEX(va), true);
+    if (!pt)
+        return false;
+
+    const usize index = PT_INDEX(va);
+    if (pt[index] & X86_PTE_PRESENT)
+        return false;
+
+    pt[index] = (pa & X86_PTE_ADDR_MASK) | flags | cacheFlags;
+
+    return true;
+}
+
+usize Arch_MmMapRegion(uptr root, uptr virtualAddr, uptr physAddr, usize size, u32 prot, Mm_CacheType cacheType)
+{
+    ASSERT(IsAligned(virtualAddr, PAGE_SIZE));
+    ASSERT(IsAligned(physAddr, PAGE_SIZE));
+    ASSERT(IsAligned(size, PAGE_SIZE));
+
+    const bool has1G = Arch_CpuHasCap(CPUCAP_1GB_PAGES);
+
+    const u64 protBits      = s_TranslateProt(prot);
+    const u64 cacheBits4K   = s_TranslateCacheType(cacheType, false);
+    const u64 cacheBitsHuge = s_TranslateCacheType(cacheType, true);
+
+    uptr  va       = virtualAddr;
+    uptr  pa       = physAddr;
+    uptr  end      = virtualAddr + size;
+    usize mappings = 0;
+
+    while (va < end)
+    {
+        const usize remaining = end - va;
+
+        if (has1G && remaining >= PAGE_SIZE_1G && IsAligned(va, PAGE_SIZE_1G) && IsAligned(pa, PAGE_SIZE_1G))
+        {
+            if (!s_MapPage1G(root, va, pa, protBits, cacheBitsHuge))
+                goto fail;
+
+            va += PAGE_SIZE_1G;
+            pa += PAGE_SIZE_1G;
+            mappings++;
+            continue;
+        }
+
+        if (remaining >= PAGE_SIZE_2M && IsAligned(va, PAGE_SIZE_2M) && IsAligned(pa, PAGE_SIZE_2M))
+        {
+            if (!s_MapPage2M(root, va, pa, protBits, cacheBitsHuge))
+                goto fail;
+
+            va += PAGE_SIZE_2M;
+            pa += PAGE_SIZE_2M;
+            mappings++;
+            continue;
+        }
+
+        if (!s_MapPage4K(root, va, pa, protBits, cacheBits4K))
+            goto fail;
+
+        va += PAGE_SIZE;
+        pa += PAGE_SIZE;
+        mappings++;
+    }
+
+    return mappings;
+
+fail:
+    Log(ERROR, "Arch_MmMapRegion: failed at VA %p (mapped %zu so far)", va, mappings);
+    return 0;
+}
+
 uptr Arch_MmCreateUserPageTable(void)
 {
-    u64 *newPml4 = Mm_EarlyAllocate(PAGE_SIZE, PAGE_SIZE);
-    if (!newPml4)
+    const uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
+    if (pfn == MM_PFN_NULL)
         return 0;
 
-    for (usize i = 0; i < PML4_SUPERVISOR_START; i++)
-        newPml4[i] = 0;
+    const uptr phys    = pfn << PAGE_SHIFT;
+    u64       *newPml4 = Mm_PhysToVirt(phys);
 
     u64 *currentPml4 = s_PhysToTable(Arch_MmGetCurrentRoot());
     for (usize i = PML4_SUPERVISOR_START; i < 512; i++)
         newPml4[i] = currentPml4[i];
 
-    return Mm_VirtToPhys(newPml4);
+    return phys;
 }
 
 void Arch_MmDestroyUserPageTable(uptr root)
@@ -264,20 +421,26 @@ void Arch_MmDestroyUserPageTable(uptr root)
             if (!(pdpt[j] & X86_PTE_PRESENT))
                 continue;
 
+            if (pdpt[j] & X86_PTE_HUGE)
+                continue;
+
             u64 *pd = s_PhysToTable(pdpt[j]);
             for (usize k = 0; k < 512; k++)
             {
                 if (!(pd[k] & X86_PTE_PRESENT))
                     continue;
 
-                Mm_FreePages(pd[k] & X86_PTE_ADDR_MASK, 1);
+                if (pd[k] & X86_PTE_HUGE)
+                    continue;
+
+                Mm_FreePages((pd[k] & X86_PTE_ADDR_MASK) >> PAGE_SHIFT, 1);
             }
 
-            Mm_FreePages(pdpt[j] & X86_PTE_ADDR_MASK, 1);
+            Mm_FreePages((pdpt[j] & X86_PTE_ADDR_MASK) >> PAGE_SHIFT, 1);
         }
 
-        Mm_FreePages(pml4[i] & X86_PTE_ADDR_MASK, 1);
+        Mm_FreePages((pml4[i] & X86_PTE_ADDR_MASK) >> PAGE_SHIFT, 1);
     }
 
-    Mm_FreePages(root, 1);
+    Mm_FreePages(root >> PAGE_SHIFT, 1);
 }

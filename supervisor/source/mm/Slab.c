@@ -17,10 +17,6 @@
 static Mm_SlabCache *s_CacheList     = nullptr;
 static Core_Spinlock s_CacheListLock = {};
 
-static u8   *s_BootArena    = nullptr;
-static usize s_BootArenaOff = 0;
-static bool  s_PoolReady    = false;
-
 constexpr usize s_CpuStateAlign = alignof(Mm_SlabCpuState);
 static_assert(s_CpuStateAlign > 0 && (s_CpuStateAlign & (s_CpuStateAlign - 1)) == 0);
 
@@ -29,39 +25,7 @@ static void *s_AllocCpuSlabs(u32 cpuCount)
     usize size  = cpuCount * sizeof(Mm_SlabCpuState);
     usize align = alignof(Mm_SlabCpuState);
 
-    if (s_PoolReady)
-        return Ex_Allocate(size, EX_TAG('S', 'l', 'C', 'p'));
-
-    if (!s_BootArena)
-    {
-        uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
-        ASSERT(pfn != MM_PFN_NULL);
-
-        s_BootArena    = Mm_PhysToVirt(pfn << PAGE_SHIFT);
-        s_BootArenaOff = 0;
-    }
-
-    usize alignedOff = AlignUp(s_BootArenaOff, align);
-
-    if (alignedOff + size > PAGE_SIZE)
-    {
-        uptr pfn = Mm_AllocatePages(MM_ALLOC_ZEROED, 1);
-        ASSERT(pfn != MM_PFN_NULL);
-
-        s_BootArena    = Mm_PhysToVirt(pfn << PAGE_SHIFT);
-        s_BootArenaOff = 0;
-        alignedOff     = 0;
-    }
-
-    void *ptr      = s_BootArena + alignedOff;
-    s_BootArenaOff = alignedOff + size;
-
-    return ptr;
-}
-
-void Mm_SlabSetPoolReady(void)
-{
-    s_PoolReady = true;
+    return Mm_PermanentAllocate(size, align);
 }
 
 static void **s_FreePtr(Mm_SlabCache *cache, void *obj)
