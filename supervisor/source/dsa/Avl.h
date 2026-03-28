@@ -41,13 +41,13 @@ Dsa_AvlNode *Dsa_AvlInsertR(Dsa_AvlNode *root, Dsa_AvlNode *node, i32 (*cmp)(Dsa
 #define Dsa_AvlRemove(tree, key, cmp_key)                                                                              \
     ({                                                                                                                 \
         Dsa_AvlNode *__removed = nullptr;                                                                              \
-        (tree)->Root           = Dsa_AvlRemoveR((tree)->Root, (key), (cmp_key), &__removed);                           \
+        (tree)->Root           = Dsa_AvlRemoveR((tree)->Root, (void *)(key), (cmp_key), &__removed);                   \
         if (__removed)                                                                                                 \
             (tree)->Count--;                                                                                           \
         __removed;                                                                                                     \
     })
 
-#define Dsa_AvlFind(tree, key, cmp_key) Dsa_AvlFindR((tree)->Root, (key), (cmp_key))
+#define Dsa_AvlFind(tree, key, cmp_key) Dsa_AvlFindR((tree)->Root, (void *)(key), (cmp_key))
 
 Dsa_AvlNode *Dsa_AvlRemoveR(Dsa_AvlNode *root, void *key, i32 (*cmp_key)(void *, Dsa_AvlNode *), Dsa_AvlNode **removed);
 Dsa_AvlNode *Dsa_AvlFindR(Dsa_AvlNode *root, void *key, i32 (*cmp_key)(void *, Dsa_AvlNode *));

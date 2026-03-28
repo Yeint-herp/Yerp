@@ -34,7 +34,7 @@ bool Panic_RegisterHook(Panic_Hook hook)
 
     Dbg_FmtContext ctx = {
         .Buffer   = buf,
-        .Capacity = sizeof(buf),
+        .Capacity = sizeof buf,
         .Position = 0,
         .sinkMask = allSinkers,
     };

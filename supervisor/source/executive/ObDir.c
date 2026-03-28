@@ -61,7 +61,7 @@ static i32 s_WalkToParent(const char *path, Ob_Directory **outParent, const char
 
     Ob_ReferenceObject(current);
 
-    while (s_NextComponent(&cursor, component, sizeof(component)))
+    while (s_NextComponent(&cursor, component, sizeof component))
     {
         if (s_IsLastComponent(cursor))
         {

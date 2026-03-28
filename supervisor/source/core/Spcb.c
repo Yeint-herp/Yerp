@@ -25,7 +25,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
         Log(TRACE, "falling back to uniprocessor mode.");
 
         usize totalSize = sizeof(struct Core_SPCB);
-        s_SpcbArray     = (struct Core_SPCB *)Mm_EarlyAllocate(totalSize, 64);
+        s_SpcbArray     = Mm_EarlyAllocate(totalSize, 64);
 
         if (!s_SpcbArray)
             Panic("Mm_EarlyAllocate failed for UP SPCB!");
@@ -43,7 +43,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     Log(INFO, "detected %u processors.", s_CpuCount);
 
     usize totalSize = sizeof(struct Core_SPCB) * s_CpuCount;
-    s_SpcbArray     = (struct Core_SPCB *)Mm_EarlyAllocate(totalSize, 64);
+    s_SpcbArray     = Mm_EarlyAllocate(totalSize, 64);
 
     if (!s_SpcbArray)
         Panic("Mm_EarlyAllocate failed for %u SMP SPCBs!", s_CpuCount);

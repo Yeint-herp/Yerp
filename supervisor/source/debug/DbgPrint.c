@@ -554,7 +554,7 @@ void Dbg_Print(const char *fmt, ...)
     char           buf[DBG_STACK_BUF_SIZE];
     Dbg_FmtContext ctx = {
         .Buffer   = buf,
-        .Capacity = sizeof(buf),
+        .Capacity = sizeof buf,
         .Position = 0,
         .sinkMask = s_SinkerEnableMask,
     };
@@ -572,7 +572,7 @@ void Dbg_PrintEx(const char *fmt, Dbg_SinkerMask mask, ...)
     char           buf[DBG_STACK_BUF_SIZE];
     Dbg_FmtContext ctx = {
         .Buffer   = buf,
-        .Capacity = sizeof(buf),
+        .Capacity = sizeof buf,
         .Position = 0,
         .sinkMask = mask,
     };
@@ -615,7 +615,7 @@ void Dbg_LogInner(Dbg_Level level, const char *module, const char *fmt, ...)
     char           buf[DBG_STACK_BUF_SIZE];
     Dbg_FmtContext ctx = {
         .Buffer   = buf,
-        .Capacity = sizeof(buf),
+        .Capacity = sizeof buf,
         .Position = 0,
         .sinkMask = s_SinkerEnableMask,
     };

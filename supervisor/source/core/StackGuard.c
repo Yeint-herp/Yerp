@@ -11,7 +11,7 @@ void Core_StackGuardInit(void)
     u64 val;
 
 retry:
-    if (!Arch_RngFill(&val, sizeof(val)))
+    if (!Arch_RngFill(&val, sizeof val))
     {
         Dbg_Log(ERROR, "StackGuard", "no hardware entropy");
         return;
