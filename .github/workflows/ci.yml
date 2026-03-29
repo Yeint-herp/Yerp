@@ -15,17 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install LLVM 19
+        run: |
+          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang lld nasm \
+            nasm \
             qemu-system-x86 \
             xorriso mtools gdisk \
             curl git make
 
       - name: Build HDD image
-        run: make hdd MODE=${{ matrix.mode }} ARCH=x86_64 EXTRA_CFLAGS="-DCI_BUILD"
+        run: make hdd MODE=${{ matrix.mode }} ARCH=x86_64 CC=clang-19 LD=ld.lld-19 AR=llvm-ar-19 EXTRA_CFLAGS="-DCI_BUILD"
 
       - name: Smoke test
         timeout-minutes: 3
