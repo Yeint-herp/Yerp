@@ -3,7 +3,7 @@
 #include <acpi/osi/OsServices.h>
 #include <acpi/tables/GenericEntry.h>
 
-static unsigned GasAccessWidth(const Acpi_Gas *gas)
+static unsigned s_GasAccessWidth(const Acpi_Gas *gas)
 {
     if (gas->AccessSize != kAcpiAccessUndefined)
         return 1u << (gas->AccessSize - 1);
@@ -27,7 +27,7 @@ Acpi_Status Acpi_GasRead(const Acpi_Gas *gas, Acpi_Uint64 *value)
     if (gas->Address == 0)
         return kAcpiNotFound;
 
-    unsigned width = GasAccessWidth(gas);
+    unsigned width = s_GasAccessWidth(gas);
 
     switch (gas->AddressSpaceId)
     {
@@ -65,7 +65,7 @@ Acpi_Status Acpi_GasWrite(const Acpi_Gas *gas, Acpi_Uint64 value)
     if (gas->Address == 0)
         return kAcpiNotFound;
 
-    unsigned width = GasAccessWidth(gas);
+    unsigned width = s_GasAccessWidth(gas);
 
     switch (gas->AddressSpaceId)
     {
