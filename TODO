@@ -1,6 +1,7 @@
 - Arch
     - X86_64
         - [ ] TSS: IOBP support for usermode.
+        - [ ] LAPIC: Timer calibration using fallbacks (PIT, PM Timer)
 
 > Refactor:
 > - Switch to using paddr_t and vaddr_t in the Mm subsystem.
