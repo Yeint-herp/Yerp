@@ -1,5 +1,6 @@
 - Arch
     - X86_64
+        - [ ] TSS + IDT: ISTs and RSP0 (late Spcr init)
         - [ ] TSS: IOBP support for usermode.
         - [ ] LAPIC: Timer calibration using fallbacks (PIT, PM Timer)
 
