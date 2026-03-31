@@ -7,19 +7,19 @@
 
 typedef enum Mm_VadType
 {
-    VAD_TYPE_PRIVATE,
-    VAD_TYPE_MMIO,
-    VAD_TYPE_MODULE,
-    VAD_TYPE_RESERVED,
+    kVadTypePrivate,
+    kVadTypeMmio,
+    kVadTypeModule,
+    kVadTypeReserved,
 } Mm_VadType;
 
 typedef enum Mm_VadFlags
 {
-    VAD_FLAG_NONE      = 0,
-    VAD_FLAG_COMMITTED = 1 << 0,
-    VAD_FLAG_GUARD     = 1 << 1,
-    VAD_FLAG_ZEROED    = 1 << 2,
-    VAD_FLAG_FIXED     = 1 << 3,
+    kVadFlagNone      = 0,
+    kFlagCommitted = 1 << 0,
+    kFlagGuard     = 1 << 1,
+    kFlagZerod    = 1 << 2,
+    kFlagFixed     = 1 << 3,
 } Mm_VadFlags;
 
 typedef struct Mm_Vad

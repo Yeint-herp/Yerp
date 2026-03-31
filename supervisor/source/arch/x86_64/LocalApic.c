@@ -105,7 +105,7 @@ void X86_64_LocalApicInit(void)
     }
     else
     {
-        s_LapicMmioBase = Mm_MapIoSpace(state->LapicBase, 0x1000, MM_CACHE_UNCACHED);
+        s_LapicMmioBase = Mm_MapIoSpace(state->LapicBase, 0x1000, kMmCacheUncached);
         if (!s_LapicMmioBase)
             Panic("failed to map LAPIC MMIO at phys %#llx", state->LapicBase);
 

@@ -3,15 +3,15 @@
 
 typedef enum
 {
-    MEM_TYPE_USABLE,
-    MEM_TYPE_RESERVED,
-    MEM_TYPE_ACPI_RECLAIMABLE,
-    MEM_TYPE_ACPI_NVS,
-    MEM_TYPE_BAD_MEMORY,
-    MEM_TYPE_BOOTLOADER_RECLAIMABLE,
-    MEM_TYPE_SUPERVISOR_MODULES,
-    MEM_TYPE_FRAMEBUFFER,
-    MEM_TYPE_EARLY_ALLOCATED
+    kMemTypeUsable,
+    kMemTypeReserved,
+    kMemTypeACPIReclaimable,
+    kMemTypeACPINVS,
+    kMemTypeBadMemory,
+    kMemTypeBootloaderReclaimable,
+    kMemTypeSupervisorModules,
+    kMemTypeFramebuffer,
+    kMemTypeEarlyAllocated
 } Mm_RegionType;
 
 typedef struct

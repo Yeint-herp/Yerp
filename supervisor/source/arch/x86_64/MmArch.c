@@ -92,16 +92,16 @@ static u64 s_TranslateCacheType(Mm_CacheType cacheType, bool huge)
 {
     switch (cacheType)
     {
-        case MM_CACHE_WRITEBACK:
+        case kMmCacheWriteBack:
             return 0;
 
-        case MM_CACHE_WRITE_THROUGH:
+        case kMmCacheWriteThrough:
             return X86_PTE_PWT;
 
-        case MM_CACHE_UNCACHED:
+        case kMmCacheUncached:
             return X86_PTE_PCD | X86_PTE_PWT;
 
-        case MM_CACHE_WRITE_COMBINE:
+        case kMmCacheWriteCombine:
             return huge ? X86_PTE_PAT_HUGE : X86_PTE_PAT_4K;
 
         default:

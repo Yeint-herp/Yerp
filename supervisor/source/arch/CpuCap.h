@@ -55,9 +55,9 @@ bool Arch_CpuHasCap(Arch_CpuCap cap);
 
 typedef enum
 {
-    CPUVENDOR_UNKNOWN = 0,
-    CPUVENDOR_INTEL,
-    CPUVENDOR_AMD,
+    kCpuVendor_Unknown = 0,
+    kCpuVendor_Intel,
+    kCpuVendor_Amd,
 } Arch_CpuVendor;
 
 Arch_CpuVendor Arch_CpuGetVendor(void);

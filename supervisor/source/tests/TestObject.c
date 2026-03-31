@@ -94,7 +94,7 @@ CI_TEST("ob: create and destroy", TestCreateDestroy)
 
     TestBody *obj    = nullptr;
     i32       status = Ob_CreateObject(type, 0, (void **)&obj);
-    if (status != OB_SUCCESS || !obj)
+    if (status != kObSuccess || !obj)
         return false;
 
     if (Ob_GetReferenceCount(obj) != 1)
@@ -172,7 +172,7 @@ CI_TEST("ob: handle insert and reference", TestHandleBasic)
 
     Ob_Handle h      = OB_HANDLE_NULL;
     i32       status = Ob_InsertHandleRaw(&table, obj, 0x3, &h);
-    if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
+    if (status != kObSuccess || h == OB_HANDLE_NULL)
     {
         Ob_DereferenceObject(obj);
         Ob_DestroyHandleTable(&table);
@@ -192,7 +192,7 @@ CI_TEST("ob: handle insert and reference", TestHandleBasic)
 
     TestBody *looked = nullptr;
     status           = Ob_ReferenceByHandle(&table, h, type, (void **)&looked);
-    if (status != OB_SUCCESS || looked != obj)
+    if (status != kObSuccess || looked != obj)
     {
         Ob_DestroyHandleTable(&table);
         return false;
@@ -276,7 +276,7 @@ CI_TEST("ob: handle type mismatch", TestHandleTypeMismatch)
 
     TestBody *result = nullptr;
     i32       status = Ob_ReferenceByHandle(&table, h, typeB, (void **)&result);
-    if (status != OB_TYPE_MISMATCH)
+    if (status != kObTypeMismatch)
     {
         Ob_DestroyHandleTable(&table);
         return false;
@@ -300,7 +300,7 @@ CI_TEST("ob: handle table growth", TestHandleGrowth)
     for (u32 i = 0; i < OB_HANDLE_TABLE_INITIAL_SIZE + 16; i++)
     {
         i32 status = Ob_InsertHandleRaw(&table, obj, i & 0xF, &handles[i]);
-        if (status != OB_SUCCESS)
+        if (status != kObSuccess)
         {
             Ob_DestroyHandleTable(&table);
             Ob_DereferenceObject(obj);
@@ -319,7 +319,7 @@ CI_TEST("ob: handle table growth", TestHandleGrowth)
     {
         TestBody *result = nullptr;
         i32       status = Ob_ReferenceByHandle(&table, handles[i], type, (void **)&result);
-        if (status != OB_SUCCESS || result != obj)
+        if (status != kObSuccess || result != obj)
         {
             Ob_DestroyHandleTable(&table);
             Ob_DereferenceObject(obj);
@@ -375,7 +375,7 @@ CI_TEST("ob: directory insert and lookup", TestDirBasic)
         dir.Buckets[i] = nullptr;
 
     i32 status = Ob_InsertObject(&dir, obj, "TestEntry");
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DereferenceObject(obj);
         return false;
@@ -389,7 +389,7 @@ CI_TEST("ob: directory insert and lookup", TestDirBasic)
 
     TestBody *found = nullptr;
     status          = Ob_LookupObject(&dir, "TestEntry", type, (void **)&found);
-    if (status != OB_SUCCESS || found != obj || found->Value != 0xBEEF)
+    if (status != kObSuccess || found != obj || found->Value != 0xBEEF)
     {
         Ob_DereferenceObject(obj);
         return false;
@@ -399,7 +399,7 @@ CI_TEST("ob: directory insert and lookup", TestDirBasic)
     TestBody *obj2 = nullptr;
     Ob_CreateObject(type, 0, (void **)&obj2);
     status = Ob_InsertObject(&dir, obj2, "TestEntry");
-    if (status != OB_NAME_COLLISION)
+    if (status != kObNameCollision)
     {
         Ob_DereferenceObject(obj);
         Ob_DereferenceObject(obj2);
@@ -408,14 +408,14 @@ CI_TEST("ob: directory insert and lookup", TestDirBasic)
     Ob_DereferenceObject(obj2);
 
     status = Ob_RemoveObject(&dir, "TestEntry");
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DereferenceObject(obj);
         return false;
     }
 
     status = Ob_LookupObject(&dir, "TestEntry", nullptr, (void **)&found);
-    if (status != OB_NOT_FOUND)
+    if (status != kObNotFound)
     {
         Ob_DereferenceObject(obj);
         return false;
@@ -445,7 +445,7 @@ CI_TEST("ob: directory type mismatch", TestDirTypeMismatch)
 
     TestBody *found  = nullptr;
     i32       status = Ob_LookupObject(&dir, "TypedEntry", typeB, (void **)&found);
-    if (status != OB_TYPE_MISMATCH)
+    if (status != kObTypeMismatch)
     {
         Ob_RemoveObject(&dir, "TypedEntry");
         Ob_DereferenceObject(obj);
@@ -464,7 +464,7 @@ CI_TEST("ob: path-based namespace", TestNamespace)
 
     Ob_Directory *sub    = nullptr;
     i32           status = Ob_CreateDirectory("\\TestNs", &sub);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return false;
 
     TestBody *obj = nullptr;
@@ -472,7 +472,7 @@ CI_TEST("ob: path-based namespace", TestNamespace)
     obj->Value = 0xCAFE;
 
     status = Ob_InsertObjectByPath("\\TestNs\\Widget", obj);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DereferenceObject(obj);
         Ob_DereferenceObject(sub);
@@ -481,7 +481,7 @@ CI_TEST("ob: path-based namespace", TestNamespace)
 
     TestBody *found = nullptr;
     status          = Ob_LookupObjectByPath("\\TestNs\\Widget", type, (void **)&found);
-    if (status != OB_SUCCESS || found->Value != 0xCAFE)
+    if (status != kObSuccess || found->Value != 0xCAFE)
     {
         Ob_DereferenceObject(obj);
         Ob_DereferenceObject(sub);
@@ -490,7 +490,7 @@ CI_TEST("ob: path-based namespace", TestNamespace)
     Ob_DereferenceObject(found);
 
     status = Ob_RemoveObjectByPath("\\TestNs\\Widget");
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DereferenceObject(obj);
         Ob_DereferenceObject(sub);
@@ -498,7 +498,7 @@ CI_TEST("ob: path-based namespace", TestNamespace)
     }
 
     status = Ob_LookupObjectByPath("\\TestNs\\Widget", nullptr, (void **)&found);
-    if (status != OB_NOT_FOUND)
+    if (status != kObNotFound)
     {
         Ob_DereferenceObject(obj);
         Ob_DereferenceObject(sub);
@@ -640,7 +640,7 @@ CI_TEST("acl: bypass privilege grants all", TestBypassGrantsAll)
     Acl_Token *token = CreateSystemToken();
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_DENY;
+    acl->Entries[0].Type       = kAclAceDeny;
     acl->Entries[0].Sid        = ACL_SID_SUPERVISOR;
     acl->Entries[0].AccessMask = 0xF;
 
@@ -657,7 +657,7 @@ CI_TEST("acl: allow entry grants access", TestAclAllow)
     Acl_Token *token = CreateUserToken(42, 0);
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = 42;
     acl->Entries[0].AccessMask = 0x3;
 
@@ -674,11 +674,11 @@ CI_TEST("acl: deny overrides allow", TestAclDenyOverride)
     Acl_Token *token = CreateUserToken(42, 0);
 
     Acl_Acl *acl               = Acl_CreateAcl(2);
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = 42;
     acl->Entries[0].AccessMask = 0xF;
 
-    acl->Entries[1].Type       = ACL_ACE_DENY;
+    acl->Entries[1].Type       = kAclAceDeny;
     acl->Entries[1].Sid        = 42;
     acl->Entries[1].AccessMask = 0xC;
 
@@ -695,7 +695,7 @@ CI_TEST("acl: non-matching sid gets nothing", TestAclNoMatch)
     Acl_Token *token = CreateUserToken(42, 0);
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = 99;
     acl->Entries[0].AccessMask = 0xF;
 
@@ -713,7 +713,7 @@ CI_TEST("acl: group membership grants access", TestAclGroupMatch)
     Acl_Token *token    = CreateUserTokenWithGroups(42, groups, 1, 0);
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = 100;
     acl->Entries[0].AccessMask = 0x5;
 
@@ -730,7 +730,7 @@ CI_TEST("acl: everyone sid matches any token", TestAclEveryoneMatch)
     Acl_Token *token = CreateUserToken(42, 0);
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = ACL_SID_EVERYONE;
     acl->Entries[0].AccessMask = 0x1;
 
@@ -815,7 +815,7 @@ CI_TEST("acl: checked insert grants access", TestCheckedInsertAllow)
     i32        status = Ob_InsertHandle(&table, obj, 0xF, owner, &h);
     Acl_DereferenceToken(owner);
 
-    if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
+    if (status != kObSuccess || h == OB_HANDLE_NULL)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -850,7 +850,7 @@ CI_TEST("acl: checked insert denies excess access", TestCheckedInsertDeny)
     i32        status = Ob_InsertHandle(&table, obj, 0xF, other, &h);
     Acl_DereferenceToken(other);
 
-    if (status != OB_ACCESS_DENIED)
+    if (status != kObAccessDenied)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -878,7 +878,7 @@ CI_TEST("acl: checked insert with subset access", TestCheckedInsertSubset)
     i32        status = Ob_InsertHandle(&table, obj, 0x1, other, &h);
     Acl_DereferenceToken(other);
 
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -912,7 +912,7 @@ CI_TEST("acl: checked insert rejects invalid access bits", TestCheckedInsertInva
     i32        status = Ob_InsertHandle(&table, obj, 0xFF, token, &h);
     Acl_DereferenceToken(token);
 
-    if (status != OB_INVALID_PARAMETER)
+    if (status != kObInvalidParameter)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -932,7 +932,7 @@ CI_TEST("acl: bypass privilege skips acl on insert", TestCheckedInsertBypass)
     Ob_CreateObject(type, 0, (void **)&obj);
 
     Acl_Acl *acl               = Acl_CreateAcl(1);
-    acl->Entries[0].Type       = ACL_ACE_DENY;
+    acl->Entries[0].Type       = kAclAceDeny;
     acl->Entries[0].Sid        = ACL_SID_EVERYONE;
     acl->Entries[0].AccessMask = 0xF;
     Ob_SetObjectSecurity(obj, 42, acl);
@@ -945,7 +945,7 @@ CI_TEST("acl: bypass privilege skips acl on insert", TestCheckedInsertBypass)
     i32        status = Ob_InsertHandle(&table, obj, 0xF, system, &h);
     Acl_DereferenceToken(system);
 
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -971,7 +971,7 @@ CI_TEST("acl: check handle access pass", TestCheckHandleAccessPass)
     Ob_InsertHandleRaw(&table, obj, 0x7, &h);
 
     i32 status = Ob_CheckHandleAccess(&table, h, 0x3);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -997,7 +997,7 @@ CI_TEST("acl: check handle access fail", TestCheckHandleAccessFail)
     Ob_InsertHandleRaw(&table, obj, 0x1, &h);
 
     i32 status = Ob_CheckHandleAccess(&table, h, 0x3);
-    if (status != OB_ACCESS_DENIED)
+    if (status != kObAccessDenied)
     {
         Ob_DestroyHandleTable(&table);
         Ob_DereferenceObject(obj);
@@ -1032,7 +1032,7 @@ CI_TEST("acl: open by path allowed", TestOpenByPathAllow)
     i32        status = Ob_OpenObjectByPath("\\TestOpen\\Gadget", type, 0xF, owner, &table, &h);
     Acl_DereferenceToken(owner);
 
-    if (status != OB_SUCCESS || h == OB_HANDLE_NULL)
+    if (status != kObSuccess || h == OB_HANDLE_NULL)
     {
         Ob_DestroyHandleTable(&table);
         Ob_RemoveObjectByPath("\\TestOpen\\Gadget");
@@ -1044,7 +1044,7 @@ CI_TEST("acl: open by path allowed", TestOpenByPathAllow)
 
     TestBody *result = nullptr;
     status           = Ob_ReferenceByHandle(&table, h, type, (void **)&result);
-    if (status != OB_SUCCESS || result->Value != 0xABCD)
+    if (status != kObSuccess || result->Value != 0xABCD)
     {
         Ob_DestroyHandleTable(&table);
         Ob_RemoveObjectByPath("\\TestOpen\\Gadget");
@@ -1084,7 +1084,7 @@ CI_TEST("acl: open by path denied", TestOpenByPathDeny)
     i32        status   = Ob_OpenObjectByPath("\\TestOpenD\\Secret", type, 0x1, outsider, &table, &h);
     Acl_DereferenceToken(outsider);
 
-    if (status != OB_ACCESS_DENIED)
+    if (status != kObAccessDenied)
     {
         Ob_DestroyHandleTable(&table);
         Ob_RemoveObjectByPath("\\TestOpenD\\Secret");

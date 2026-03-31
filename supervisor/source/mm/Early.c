@@ -55,23 +55,23 @@ static Mm_RegionType s_TranslateLimineType(u64 limineType)
     switch (limineType)
     {
         case LIMINE_MEMMAP_USABLE:
-            return MEM_TYPE_USABLE;
+            return kMemTypeUsable;
         case LIMINE_MEMMAP_RESERVED:
-            return MEM_TYPE_RESERVED;
+            return kMemTypeReserved;
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
-            return MEM_TYPE_ACPI_RECLAIMABLE;
+            return kMemTypeACPIReclaimable;
         case LIMINE_MEMMAP_ACPI_NVS:
-            return MEM_TYPE_ACPI_NVS;
+            return kMemTypeACPINVS;
         case LIMINE_MEMMAP_BAD_MEMORY:
-            return MEM_TYPE_BAD_MEMORY;
+            return kMemTypeBadMemory;
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-            return MEM_TYPE_BOOTLOADER_RECLAIMABLE;
+            return kMemTypeBootloaderReclaimable;
         case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
-            return MEM_TYPE_SUPERVISOR_MODULES;
+            return kMemTypeSupervisorModules;
         case LIMINE_MEMMAP_FRAMEBUFFER:
-            return MEM_TYPE_FRAMEBUFFER;
+            return kMemTypeFramebuffer;
         default:
-            return MEM_TYPE_RESERVED;
+            return kMemTypeReserved;
     }
 }
 
@@ -128,7 +128,7 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
 
     s_MemMap.Regions[0].Base   = arrayPhys;
     s_MemMap.Regions[0].Length = arraySize;
-    s_MemMap.Regions[0].Type   = MEM_TYPE_EARLY_ALLOCATED;
+    s_MemMap.Regions[0].Type   = kMemTypeEarlyAllocated;
     s_MemMap.Count++;
 
     for (usize i = 0; i < mmResponse->entry_count; i++)
@@ -165,7 +165,7 @@ static void *s_CarveFromMemMap(usize size, usize alignment)
     for (usize i = 0; i < s_MemMap.Count; i++)
     {
         Mm_MemRegion *reg = &s_MemMap.Regions[i];
-        if (reg->Type != MEM_TYPE_USABLE)
+        if (reg->Type != kMemTypeUsable)
             continue;
 
         if (reg->Length < size)
@@ -186,34 +186,34 @@ static void *s_CarveFromMemMap(usize size, usize alignment)
         const u64 aboveLen = regTop - (alignedBase + size);
 
         if (belowLen == 0 && aboveLen == 0)
-            reg->Type = MEM_TYPE_EARLY_ALLOCATED;
+            reg->Type = kMemTypeEarlyAllocated;
         else if (belowLen > 0 && aboveLen == 0)
         {
             reg->Length = belowLen;
 
-            if (!s_InsertRegion(i + 1, allocPhys, size, MEM_TYPE_EARLY_ALLOCATED))
+            if (!s_InsertRegion(i + 1, allocPhys, size, kMemTypeEarlyAllocated))
                 Log(WARN, "early map full, allocation %#llx not tracked", allocPhys);
         }
         else if (belowLen == 0 && aboveLen > 0)
         {
             reg->Base   = allocPhys;
             reg->Length = size;
-            reg->Type   = MEM_TYPE_EARLY_ALLOCATED;
+            reg->Type   = kMemTypeEarlyAllocated;
 
-            if (!s_InsertRegion(i + 1, allocPhys + size, aboveLen, MEM_TYPE_USABLE))
+            if (!s_InsertRegion(i + 1, allocPhys + size, aboveLen, kMemTypeUsable))
                 Log(WARN, "early map full, %llu bytes above %#llx lost", aboveLen, allocPhys);
         }
         else
         {
             reg->Length = belowLen;
 
-            if (!s_InsertRegion(i + 1, allocPhys, size, MEM_TYPE_EARLY_ALLOCATED))
+            if (!s_InsertRegion(i + 1, allocPhys, size, kMemTypeEarlyAllocated))
             {
                 Log(WARN, "early map full, allocation %#llx not tracked", allocPhys);
                 break;
             }
 
-            if (!s_InsertRegion(i + 2, allocPhys + size, aboveLen, MEM_TYPE_USABLE))
+            if (!s_InsertRegion(i + 2, allocPhys + size, aboveLen, kMemTypeUsable))
                 Log(WARN, "early map full, %llu bytes above %#llx lost", aboveLen, allocPhys);
         }
 

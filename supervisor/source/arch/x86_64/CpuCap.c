@@ -21,11 +21,11 @@ static void s_MapBit(u32 reg, u32 bit, Arch_CpuCap cap)
 static void s_DetectVendor(const Arch_CpuidRegs *leaf0)
 {
     if (leaf0->Ebx == 0x756E6547 && leaf0->Edx == 0x49656E69 && leaf0->Ecx == 0x6C65746E)
-        s_Vendor = CPUVENDOR_INTEL;
+        s_Vendor = kCpuVendor_Intel;
     else if (leaf0->Ebx == 0x68747541 && leaf0->Edx == 0x69746E65 && leaf0->Ecx == 0x444D4163)
-        s_Vendor = CPUVENDOR_AMD;
+        s_Vendor = kCpuVendor_Amd;
     else
-        s_Vendor = CPUVENDOR_UNKNOWN;
+        s_Vendor = kCpuVendor_Unknown;
 }
 
 static void s_DetectBrand(u32 maxExt)

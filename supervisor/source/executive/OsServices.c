@@ -33,7 +33,7 @@ Acpi_Vaddr Acpi_OsMap(Acpi_Paddr phys, Acpi_Usize length)
     if (length == 0)
         return nullptr;
 
-    uptr va = Mm_MapIoSpace(phys, length, MM_CACHE_UNCACHED);
+    uptr va = Mm_MapIoSpace(phys, length, kMmCacheUncached);
     return (va != 0) ? (Acpi_Vaddr)va : nullptr;
 }
 

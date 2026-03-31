@@ -9,10 +9,10 @@
 
 typedef enum Mm_CacheType
 {
-    MM_CACHE_WRITEBACK = 0,
-    MM_CACHE_UNCACHED,
-    MM_CACHE_WRITE_COMBINE,
-    MM_CACHE_WRITE_THROUGH,
+    kMmCacheWriteBack = 0,
+    kMmCacheUncached,
+    kMmCacheWriteCombine,
+    kMmCacheWriteThrough,
 } Mm_CacheType;
 
 bool Arch_MmMapPage(uptr root, uptr virtualAddr, uptr physAddr, u32 prot, Mm_CacheType cacheType);

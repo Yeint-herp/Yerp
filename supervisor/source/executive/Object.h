@@ -7,13 +7,13 @@
 
 enum
 {
-    OB_SUCCESS,
-    OB_INVALID_PARAMETER,
-    OB_INSUFFICIENT_RESOURCES,
-    OB_NOT_FOUND,
-    OB_NAME_COLLISION,
-    OB_TYPE_MISMATCH,
-    OB_ACCESS_DENIED,
+    kObSuccess,
+    kObInvalidParameter,
+    kObInsufficientResources,
+    kObNotFound,
+    kObNameCollision,
+    kObTypeMismatch,
+    kObAccessDenied,
 };
 
 typedef void (*Ob_DeleteProcedure)(void *Object);

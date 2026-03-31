@@ -7,23 +7,23 @@ const char *Mm_GetRegionTypeString(Mm_RegionType type)
 {
     switch (type)
     {
-        case MEM_TYPE_USABLE:
+        case kMemTypeUsable:
             return "USABLE";
-        case MEM_TYPE_RESERVED:
+        case kMemTypeReserved:
             return "RESERVED";
-        case MEM_TYPE_ACPI_RECLAIMABLE:
+        case kMemTypeACPIReclaimable:
             return "ACPI_RECLAIMABLE";
-        case MEM_TYPE_ACPI_NVS:
+        case kMemTypeACPINVS:
             return "ACPI_NVS";
-        case MEM_TYPE_BAD_MEMORY:
+        case kMemTypeBadMemory:
             return "BAD_MEMORY";
-        case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
+        case kMemTypeBootloaderReclaimable:
             return "BOOTLOADER_RECLAIMABLE";
-        case MEM_TYPE_SUPERVISOR_MODULES:
+        case kMemTypeSupervisorModules:
             return "SUPERVISOR_AND_MODULES";
-        case MEM_TYPE_FRAMEBUFFER:
+        case kMemTypeFramebuffer:
             return "FRAMEBUFFER";
-        case MEM_TYPE_EARLY_ALLOCATED:
+        case kMemTypeEarlyAllocated:
             return "EARLY_ALLOCATED";
         default:
             return "UNKNOWN";

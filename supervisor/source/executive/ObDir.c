@@ -52,7 +52,7 @@ static bool s_IsLastComponent(const char *cursor)
 static i32 s_WalkToParent(const char *path, Ob_Directory **outParent, const char **outLeaf)
 {
     if (!path || path[0] != OB_PATH_SEPARATOR)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     Ob_Directory *current = Ob_GetRootDirectory();
     const char   *cursor  = path;
@@ -71,7 +71,7 @@ static i32 s_WalkToParent(const char *path, Ob_Directory **outParent, const char
 
             *outParent = current;
             *outLeaf   = leafStart;
-            return OB_SUCCESS;
+            return kObSuccess;
         }
 
         void     *child  = nullptr;
@@ -80,20 +80,20 @@ static i32 s_WalkToParent(const char *path, Ob_Directory **outParent, const char
         if (!currentIsRoot)
             Ob_DereferenceObject(current);
 
-        if (status != OB_SUCCESS)
+        if (status != kObSuccess)
             return status;
 
         current       = child;
         currentIsRoot = false;
     }
 
-    return OB_INVALID_PARAMETER;
+    return kObInvalidParameter;
 }
 
 i32 Ob_InsertObject(Ob_Directory *dir, void *object, const char *name)
 {
     if (!dir || !object || !name || !name[0])
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     u32 bucket = s_HashName(name) % OB_DIRECTORY_BUCKETS;
 
@@ -106,7 +106,7 @@ i32 Ob_InsertObject(Ob_Directory *dir, void *object, const char *name)
             Core_SpinlockRelease(&dir->Lock);
             Log(TRACE, "name collision inserting '%s'", name);
 
-            return OB_NAME_COLLISION;
+            return kObNameCollision;
         }
     }
 
@@ -115,7 +115,7 @@ i32 Ob_InsertObject(Ob_Directory *dir, void *object, const char *name)
     if (!entry)
     {
         Core_SpinlockRelease(&dir->Lock);
-        return OB_INSUFFICIENT_RESOURCES;
+        return kObInsufficientResources;
     }
 
     entry->Name   = Core_DuplicateString(name, EX_TAG_OBDE);
@@ -132,13 +132,13 @@ i32 Ob_InsertObject(Ob_Directory *dir, void *object, const char *name)
     Core_SpinlockRelease(&dir->Lock);
 
     Log(TRACE, "inserted '%s' into directory", name);
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 i32 Ob_LookupObject(Ob_Directory *dir, const char *name, Ob_Type *expectedType, void **outObject)
 {
     if (!dir || !name || !outObject)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     u32 bucket = s_HashName(name) % OB_DIRECTORY_BUCKETS;
 
@@ -155,7 +155,7 @@ i32 Ob_LookupObject(Ob_Directory *dir, const char *name, Ob_Type *expectedType, 
             if (hdr->Type != expectedType)
             {
                 Core_SpinlockRelease(&dir->Lock);
-                return OB_TYPE_MISMATCH;
+                return kObTypeMismatch;
             }
         }
 
@@ -163,17 +163,17 @@ i32 Ob_LookupObject(Ob_Directory *dir, const char *name, Ob_Type *expectedType, 
         *outObject = e->Object;
 
         Core_SpinlockRelease(&dir->Lock);
-        return OB_SUCCESS;
+        return kObSuccess;
     }
 
     Core_SpinlockRelease(&dir->Lock);
-    return OB_NOT_FOUND;
+    return kObNotFound;
 }
 
 i32 Ob_RemoveObject(Ob_Directory *dir, const char *name)
 {
     if (!dir || !name)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     u32 bucket = s_HashName(name) % OB_DIRECTORY_BUCKETS;
 
@@ -200,11 +200,11 @@ i32 Ob_RemoveObject(Ob_Directory *dir, const char *name)
         Ob_DereferenceObject(object);
 
         Log(TRACE, "removed '%s' from directory", name);
-        return OB_SUCCESS;
+        return kObSuccess;
     }
 
     Core_SpinlockRelease(&dir->Lock);
-    return OB_NOT_FOUND;
+    return kObNotFound;
 }
 
 i32 Ob_InsertObjectByPath(const char *path, void *object)
@@ -213,7 +213,7 @@ i32 Ob_InsertObjectByPath(const char *path, void *object)
     const char   *leaf   = nullptr;
 
     i32 status = s_WalkToParent(path, &parent, &leaf);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return status;
 
     status = Ob_InsertObject(parent, object, leaf);
@@ -228,7 +228,7 @@ i32 Ob_LookupObjectByPath(const char *path, Ob_Type *expectedType, void **outObj
     const char   *leaf   = nullptr;
 
     i32 status = s_WalkToParent(path, &parent, &leaf);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return status;
 
     status = Ob_LookupObject(parent, leaf, expectedType, outObject);
@@ -243,7 +243,7 @@ i32 Ob_RemoveObjectByPath(const char *path)
     const char   *leaf   = nullptr;
 
     i32 status = s_WalkToParent(path, &parent, &leaf);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return status;
 
     status = Ob_RemoveObject(parent, leaf);
@@ -257,13 +257,13 @@ i32 Ob_CreateDirectory(const char *path, Ob_Directory **outDir)
     Ob_Directory *dir = nullptr;
 
     i32 status = Ob_CreateObject(Ob_GetDirectoryType(), 0, (void **)&dir);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return status;
 
     Core_ZeroMemory(dir, sizeof *dir);
 
     status = Ob_InsertObjectByPath(path, dir);
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
     {
         Ob_DereferenceObject(dir);
         return status;
@@ -274,19 +274,19 @@ i32 Ob_CreateDirectory(const char *path, Ob_Directory **outDir)
     else
         Ob_DereferenceObject(dir);
 
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 i32 Ob_OpenObjectByPath(const char *path, Ob_Type *expectedType, u32 desiredAccess, Acl_Token *token,
                         Ob_HandleTable *table, Ob_Handle *outHandle)
 {
     if (!path || !token || !table || !outHandle)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     void *object = nullptr;
     i32   status = Ob_LookupObjectByPath(path, expectedType, &object);
 
-    if (status != OB_SUCCESS)
+    if (status != kObSuccess)
         return status;
 
     status = Ob_InsertHandle(table, object, desiredAccess, token, outHandle);

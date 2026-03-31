@@ -52,7 +52,7 @@ static void s_RemapSupervisorImage(uptr newRoot)
 
             pa &= ~(uptr)(PAGE_SIZE - 1);
 
-            bool ok = Arch_MmMapPage(newRoot, va, pa, sections[i].prot | MM_PROT_GLOBAL, MM_CACHE_WRITEBACK);
+            bool ok = Arch_MmMapPage(newRoot, va, pa, sections[i].prot | MM_PROT_GLOBAL, kMmCacheWriteBack);
             if (!ok)
                 Panic("failed to remap supervisor VA %p", va);
 
@@ -75,7 +75,7 @@ static void s_RemapSupervisorImage(uptr newRoot)
 
         pa &= ~(uptr)(PAGE_SIZE - 1);
 
-        bool ok = Arch_MmMapPage(newRoot, va, pa, MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL, MM_CACHE_WRITEBACK);
+        bool ok = Arch_MmMapPage(newRoot, va, pa, MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL, kMmCacheWriteBack);
         if (!ok)
             Panic("failed to gap-fill supervisor VA %p", va);
 
@@ -116,7 +116,7 @@ static void s_RemapHhdm(uptr newRoot)
             const uptr runSize = physStart - runStart;
 
             usize mapped = Arch_MmMapRegion(newRoot, layout->HhdmBase + runStart, runStart, runSize,
-                                            MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL, MM_CACHE_WRITEBACK);
+                                            MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL, kMmCacheWriteBack);
 
             if (mapped == 0)
                 Panic("failed to map HHDM region PA %p, size %zu", runStart, runSize);
@@ -168,9 +168,9 @@ void s_VadUnmapAndRelease(Mm_AddressSpace *vas, Mm_Vad *vad)
     {
         const uptr va = vad->BaseAddress + (i << PAGE_SHIFT);
 
-        if (vad->Type == VAD_TYPE_MMIO)
+        if (vad->Type == kVadTypeMmio)
             Arch_MmUnmapPage(root, va);
-        else if (vad->Type == VAD_TYPE_PRIVATE)
+        else if (vad->Type == kVadTypePrivate)
         {
             const uptr pa = Arch_MmQueryMapping(root, va);
 
@@ -282,7 +282,7 @@ uptr Mm_VasAllocateRegion(Mm_AddressSpace *vas, uptr hint, usize size, Mm_VadTyp
         return 0;
     }
 
-    Mm_Vad *vad = Mm_VadCreate(base, size, type, prot, MM_CACHE_WRITEBACK, flags);
+    Mm_Vad *vad = Mm_VadCreate(base, size, type, prot, kMmCacheWriteBack, flags);
     if (!vad)
     {
         Core_SpinlockRelease(&vas->Lock);
@@ -292,12 +292,12 @@ uptr Mm_VasAllocateRegion(Mm_AddressSpace *vas, uptr hint, usize size, Mm_VadTyp
     bool ok = Dsa_AvlInsert(&vas->VadTree, &vad->TreeNode, Mm_VadInsertCmp);
     ASSERT(ok);
 
-    if (flags & VAD_FLAG_COMMITTED)
+    if (flags & kFlagCommitted)
     {
         usize pageCount = size >> PAGE_SHIFT;
         for (usize i = 0; i < pageCount; i++)
         {
-            uptr pa = Mm_AllocatePages(flags & VAD_FLAG_ZEROED ? MM_ALLOC_ZEROED : MM_ALLOC_ANY, 1);
+            uptr pa = Mm_AllocatePages(flags & kFlagZerod ? MM_ALLOC_ZEROED : MM_ALLOC_ANY, 1);
             if (pa == MM_PFN_NULL)
             {
                 for (usize j = 0; j < i; j++)
@@ -321,7 +321,7 @@ uptr Mm_VasAllocateRegion(Mm_AddressSpace *vas, uptr hint, usize size, Mm_VadTyp
 
             const uptr phys = pa << PAGE_SHIFT;
             const uptr va   = base + (i << PAGE_SHIFT);
-            if (!Arch_MmMapPage(vas->PageTableRoot, va, phys, prot, MM_CACHE_WRITEBACK))
+            if (!Arch_MmMapPage(vas->PageTableRoot, va, phys, prot, kMmCacheWriteBack))
             {
                 Mm_FreePages(pa, 1);
 
@@ -416,7 +416,7 @@ uptr Mm_MapIoSpace(uptr physBase, usize size, Mm_CacheType cacheType)
     }
 
     Mm_Vad *vad =
-        Mm_VadCreate(base, mapSize, VAD_TYPE_MMIO, MM_PROT_READ | MM_PROT_WRITE, cacheType, VAD_FLAG_COMMITTED);
+        Mm_VadCreate(base, mapSize, kVadTypeMmio, MM_PROT_READ | MM_PROT_WRITE, cacheType, kFlagCommitted);
     if (!vad)
     {
         Core_SpinlockRelease(&vas->Lock);
@@ -473,7 +473,7 @@ void Mm_UnmapIoSpace(uptr virtualAddr)
     }
 
     Mm_Vad *vad = Dsa_AvlEntry(node, Mm_Vad, TreeNode);
-    ASSERT(vad->Type == VAD_TYPE_MMIO);
+    ASSERT(vad->Type == kVadTypeMmio);
 
     uptr  base      = vad->BaseAddress;
     usize pageCount = vad->RegionSize >> PAGE_SHIFT;

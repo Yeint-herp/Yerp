@@ -618,13 +618,13 @@ static bool s_RegionNeedsPfnTracking(u32 type)
 {
     switch (type)
     {
-        case MEM_TYPE_USABLE:
-        case MEM_TYPE_SUPERVISOR_MODULES:
-        case MEM_TYPE_EARLY_ALLOCATED:
-        case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
-        case MEM_TYPE_ACPI_RECLAIMABLE:
-        case MEM_TYPE_BAD_MEMORY:
-        case MEM_TYPE_FRAMEBUFFER:
+        case kMemTypeUsable:
+        case kMemTypeSupervisorModules:
+        case kMemTypeEarlyAllocated:
+        case kMemTypeBootloaderReclaimable:
+        case kMemTypeACPIReclaimable:
+        case kMemTypeBadMemory:
+        case kMemTypeFramebuffer:
             return true;
         default:
             return false;
@@ -687,7 +687,7 @@ static void s_MapOnePfnDbPage(uptr offset, void *opaque)
     uptr va = ctx->pfnDbBase + offset;
 
     bool ok = Arch_MmMapPage(ctx->root, va, ctx->physCursor, MM_PROT_READ | MM_PROT_WRITE | MM_PROT_GLOBAL,
-                             MM_CACHE_WRITEBACK);
+                             kMmCacheWriteBack);
     if (!ok)
         Panic("failed to map PfnDb page at VA %p", va);
 
@@ -776,24 +776,24 @@ void Mm_PfnDbInit(void)
 
             switch (region->Type)
             {
-                case MEM_TYPE_USABLE:
+                case kMemTypeUsable:
                     entry->e1.PageLocation = FreePageList;
                     entry->ReferenceCount  = 0;
                     Mm_InsertPageInList(&Mm_FreePageListHead, pfn);
                     s_TotalPhysicalPages++;
                     break;
 
-                case MEM_TYPE_BAD_MEMORY:
+                case kMemTypeBadMemory:
                     entry->e1.PageLocation = BadPageList;
                     entry->ReferenceCount  = 0;
                     Mm_InsertPageInList(&Mm_BadPageListHead, pfn);
                     break;
 
-                case MEM_TYPE_SUPERVISOR_MODULES:
-                case MEM_TYPE_EARLY_ALLOCATED:
-                case MEM_TYPE_FRAMEBUFFER:
-                case MEM_TYPE_BOOTLOADER_RECLAIMABLE:
-                case MEM_TYPE_ACPI_RECLAIMABLE:
+                case kMemTypeSupervisorModules:
+                case kMemTypeEarlyAllocated:
+                case kMemTypeFramebuffer:
+                case kMemTypeBootloaderReclaimable:
+                case kMemTypeACPIReclaimable:
                     entry->e1.PageLocation = ActiveAndValid;
                     entry->ReferenceCount  = 1;
                     break;

@@ -43,13 +43,13 @@ Ob_Type *Ob_CreateType(const Ob_TypeInfo *info)
 i32 Ob_CreateObject(Ob_Type *type, u32 flags, void **outObject)
 {
     if (!type || !outObject)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     const usize totalSize = sizeof(Ob_Header) + type->Info.ObjectBodySize;
 
     Ob_Header *hdr = Ex_Allocate(totalSize, type->Info.PoolTag);
     if (!hdr)
-        return OB_INSUFFICIENT_RESOURCES;
+        return kObInsufficientResources;
 
     Core_ZeroMemory(hdr, totalSize);
 
@@ -67,7 +67,7 @@ i32 Ob_CreateObject(Ob_Type *type, u32 flags, void **outObject)
     void *body = Ob_BodyFromHeader(hdr);
     *outObject = body;
 
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 void Ob_DestroyObject(void *object)

@@ -33,8 +33,8 @@ bool Acl_TokenMatchesSid(const Acl_Token *token, Acl_Sid sid);
 
 typedef enum Acl_AceType
 {
-    ACL_ACE_ALLOW,
-    ACL_ACE_DENY,
+    kAclAceAllow,
+    kAclAceDeny,
 } Acl_AceType;
 
 typedef struct Acl_Ace

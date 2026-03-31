@@ -29,7 +29,7 @@ bool X86_64_HpetInit(void)
         return false;
     }
 
-    uptr mmio = Mm_MapIoSpace(physBase, 0x1000, MM_CACHE_UNCACHED);
+    uptr mmio = Mm_MapIoSpace(physBase, 0x1000, kMmCacheUncached);
     if (!mmio)
     {
         Log(ERROR, "failed to map HPET at phys %#llx", physBase);

@@ -50,7 +50,7 @@ static i32 GrowHandleTable(Ob_HandleTable *table)
     Ob_HandleEntry *newEntries = Ex_Allocate(newSize, EX_TAG_OBHT);
 
     if (!newEntries)
-        return OB_INSUFFICIENT_RESOURCES;
+        return kObInsufficientResources;
 
     for (u32 i = 0; i < table->Capacity; i++)
         newEntries[i] = table->Entries[i];
@@ -70,20 +70,20 @@ static i32 GrowHandleTable(Ob_HandleTable *table)
     Ex_Free(old);
 
     Log(TRACE, "handle table grown to %u entries", newCap);
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 i32 Ob_InsertHandleRaw(Ob_HandleTable *table, void *object, u32 access, Ob_Handle *outHandle)
 {
     if (!table || !object || !outHandle)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     Core_SpinlockAcquire(&table->Lock);
 
     if (table->FirstFree == HANDLE_FREE_END)
     {
         const i32 status = GrowHandleTable(table);
-        if (status != OB_SUCCESS)
+        if (status != kObSuccess)
         {
             Core_SpinlockRelease(&table->Lock);
             return status;
@@ -103,23 +103,23 @@ i32 Ob_InsertHandleRaw(Ob_HandleTable *table, void *object, u32 access, Ob_Handl
     Ob_IncrementHandleCount(object);
 
     *outHandle = (Ob_Handle)index;
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 desiredAccess, Acl_Token *token, Ob_Handle *outHandle)
 {
     if (!table || !object || !outHandle || !token)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     Ob_Header *hdr = Ob_HeaderFromBody(object);
 
     if (desiredAccess & ~hdr->Type->Info.ValidAccessMask)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     u32 granted = Acl_ComputeAccess(hdr->Acl, token, desiredAccess);
 
     if ((granted & desiredAccess) != desiredAccess)
-        return OB_ACCESS_DENIED;
+        return kObAccessDenied;
 
     return Ob_InsertHandleRaw(table, object, granted, outHandle);
 }
@@ -127,7 +127,7 @@ i32 Ob_InsertHandle(Ob_HandleTable *table, void *object, u32 desiredAccess, Acl_
 i32 Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expectedType, void **outObject)
 {
     if (!table || !outObject)
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
 
     Core_SpinlockAcquire(&table->Lock);
 
@@ -136,7 +136,7 @@ i32 Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expec
     if (index >= table->Capacity || !table->Entries[index].Object)
     {
         Core_SpinlockRelease(&table->Lock);
-        return OB_INVALID_PARAMETER;
+        return kObInvalidParameter;
     }
 
     void *object = table->Entries[index].Object;
@@ -147,7 +147,7 @@ i32 Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expec
         if (hdr->Type != expectedType)
         {
             Core_SpinlockRelease(&table->Lock);
-            return OB_TYPE_MISMATCH;
+            return kObTypeMismatch;
         }
     }
 
@@ -156,7 +156,7 @@ i32 Ob_ReferenceByHandle(Ob_HandleTable *table, Ob_Handle handle, Ob_Type *expec
     *outObject = object;
     Core_SpinlockRelease(&table->Lock);
 
-    return OB_SUCCESS;
+    return kObSuccess;
 }
 
 void Ob_CloseHandle(Ob_HandleTable *table, Ob_Handle handle)
@@ -205,7 +205,7 @@ i32 Ob_CheckHandleAccess(Ob_HandleTable *table, Ob_Handle handle, u32 requiredAc
     const u32 granted = Ob_GetHandleAccess(table, handle);
 
     if ((granted & requiredAccess) != requiredAccess)
-        return OB_ACCESS_DENIED;
+        return kObAccessDenied;
 
-    return OB_SUCCESS;
+    return kObSuccess;
 }

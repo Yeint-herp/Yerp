@@ -80,7 +80,7 @@ static bool s_OnIoApic(const Acpi_MadtEntry *entry, void *ctx)
         .MmioBase = 0,
     };
 
-    info.MmioBase = Mm_MapIoSpace(info.PhysBase, 0x1000, MM_CACHE_UNCACHED);
+    info.MmioBase = Mm_MapIoSpace(info.PhysBase, 0x1000, kMmCacheUncached);
 
     if (info.MmioBase)
     {

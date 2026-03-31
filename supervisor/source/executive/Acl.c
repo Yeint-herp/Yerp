@@ -128,7 +128,7 @@ u32 Acl_ComputeAccess(const Acl_Acl *acl, const Acl_Token *token, u32 desiredAcc
         if (!Acl_TokenMatchesSid(token, ace->Sid))
             continue;
 
-        if (ace->Type == ACL_ACE_DENY)
+        if (ace->Type == kAclAceDeny)
             denied |= ace->AccessMask;
         else
             allowed |= ace->AccessMask;
@@ -148,13 +148,13 @@ Acl_Acl *Acl_CreateSimple(Acl_Sid owner, u32 ownerAccess, u32 othersAccess)
     if (!acl)
         return nullptr;
 
-    acl->Entries[0].Type       = ACL_ACE_ALLOW;
+    acl->Entries[0].Type       = kAclAceAllow;
     acl->Entries[0].Sid        = owner;
     acl->Entries[0].AccessMask = ownerAccess;
 
     if (othersAccess)
     {
-        acl->Entries[1].Type       = ACL_ACE_ALLOW;
+        acl->Entries[1].Type       = kAclAceAllow;
         acl->Entries[1].Sid        = ACL_SID_EVERYONE;
         acl->Entries[1].AccessMask = othersAccess;
     }
