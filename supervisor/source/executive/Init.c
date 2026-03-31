@@ -14,7 +14,7 @@
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Vas.h>
 
 void Exec_InitializeEarly()

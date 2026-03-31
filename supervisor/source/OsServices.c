@@ -6,7 +6,7 @@
 #include <core/VarArg.h>
 #include <debug/DbgPrint.h>
 #include <mm/Early.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Vas.h>
 
 #define EX_TAG_ACPI EX_TAG('A', 'c', 'p', 'i')

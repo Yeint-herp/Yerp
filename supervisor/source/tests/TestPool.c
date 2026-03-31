@@ -3,7 +3,7 @@
 #include <core/Memory.h>
 #include <debug/DbgPrint.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <tests/CiTest.h>
 
 CI_TEST("pool: small allocation returns non-null", PoolSmallAlloc)

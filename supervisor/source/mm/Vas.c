@@ -8,7 +8,7 @@
 #include <mm/Layout.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Vas.h>
 
 static Mm_AddressSpace s_SupervisorVas;

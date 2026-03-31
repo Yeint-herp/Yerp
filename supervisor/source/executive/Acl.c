@@ -4,7 +4,7 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <executive/Acl.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 #define EX_TAG_ACLTKN EX_TAG('A', 'c', 'T', 'k')
 #define EX_TAG_ACLACL EX_TAG('A', 'c', 'L', 'l')

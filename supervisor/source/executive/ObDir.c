@@ -3,7 +3,7 @@
 #include <core/Memory.h>
 #include <debug/DbgPrint.h>
 #include <executive/Object.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 #define EX_TAG_OBDE EX_TAG('O', 'b', 'D', 'e')
 

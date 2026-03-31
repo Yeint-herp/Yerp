@@ -3,7 +3,7 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <executive/Object.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 #define EX_TAG_OBHT EX_TAG('O', 'b', 'H', 't')
 

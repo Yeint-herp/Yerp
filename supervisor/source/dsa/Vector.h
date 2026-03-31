@@ -2,7 +2,7 @@
 #define SUPERVISOR_DSA_VECTOR_H
 
 #include <core/Memory.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 typedef struct Dsa_VectorHeader
 {

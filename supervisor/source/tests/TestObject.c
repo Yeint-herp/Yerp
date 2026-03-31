@@ -2,7 +2,7 @@
 
 #include <executive/Acl.h>
 #include <executive/Object.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <tests/CiTest.h>
 
 #define TEST_TAG EX_TAG('T', 's', 'O', 'b')

@@ -9,7 +9,7 @@
 #include <debug/Panic.h>
 #include <mm/Early.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Slab.h>
 
 #define SLAB_CAS_MAX_ATTEMPTS 4

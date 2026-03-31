@@ -5,7 +5,7 @@
 #include <debug/Panic.h>
 #include <mm/Early.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Slab.h>
 
 #define POOL_MIN_SHIFT    4

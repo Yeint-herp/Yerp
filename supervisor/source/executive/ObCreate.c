@@ -5,7 +5,7 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <executive/Object.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 #define OB_MAX_TYPES 64
 

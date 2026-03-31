@@ -2,7 +2,7 @@
 
 #include <debug/Panic.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Vad.h>
 
 i32 Mm_VadInsertCmp(Dsa_AvlNode *a, Dsa_AvlNode *b)

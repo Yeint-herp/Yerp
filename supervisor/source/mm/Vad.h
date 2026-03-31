@@ -3,7 +3,7 @@
 
 #include <arch/MmArch.h>
 #include <dsa/Avl.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 
 typedef enum Mm_VadType
 {

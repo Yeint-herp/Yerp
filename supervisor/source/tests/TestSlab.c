@@ -3,7 +3,7 @@
 #include <core/Memory.h>
 #include <debug/DbgPrint.h>
 #include <mm/PfnDb.h>
-#include <mm/Pool.h>
+#include <executive/Pool.h>
 #include <mm/Slab.h>
 #include <tests/CiTest.h>
 
