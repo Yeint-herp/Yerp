@@ -11,6 +11,7 @@ typedef u32 Interrupt_Handle;
 typedef void (*Interrupt_Handler)(Arch_RegisterFrame *frame, void *context);
 
 void Interrupt_ControllerInit(void);
+void Interrupt_InitAp(void);
 
 Interrupt_Handle Interrupt_Allocate(Irql_t irql);
 void             Interrupt_Free(Interrupt_Handle handle);

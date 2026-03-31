@@ -360,3 +360,8 @@ void Interrupt_ControllerInit(void)
 
     Log(INFO, "interrupt controller initialized");
 }
+
+void Interrupt_InitAp(void)
+{
+    X86_64_LocalApicInitAp();
+}
