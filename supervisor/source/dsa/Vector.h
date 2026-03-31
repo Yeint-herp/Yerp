@@ -81,6 +81,6 @@ typedef struct Dsa_VectorHeader
 
 #define Dsa_VectorLast(v) ((v)[Dsa_VectorHdr(v)->Count - 1])
 
-#define Dsa_VectorForEach(v, it) for (typeof(v)(it) = (v); (it) < (v) + Dsa_VectorCount(v); ++(it))
+#define Dsa_VectorForEach(v, it) for (typeof(*(v)) *(it) = (v); (it) < (v) + Dsa_VectorCount(v); ++(it))
 
 #endif /* SUPERVISOR_DSA_VECTOR_H */
