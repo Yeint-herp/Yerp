@@ -12,6 +12,12 @@ typedef struct
     void *Context;
 } Arch_InterruptRegistration;
 
+typedef struct
+{
+    u32  Gsi;
+    bool IsHwIrq;
+} Arch_VectorInfo;
+
 struct Arch_SPCR
 {
     struct X86_64_Tss Tss;
@@ -19,6 +25,7 @@ struct Arch_SPCR
 
     struct X86_64_Idt          Idt;
     Arch_InterruptRegistration IsrTable[256];
+    Arch_VectorInfo            VectorInfo[256];
 };
 
 struct limine_mp_response;
