@@ -9,8 +9,8 @@ typedef struct
     u32 Edx;
 } Arch_CpuidRegs;
 
-void Arch_CpuidQuery(u32 leaf, u32 subleaf, Arch_CpuidRegs *out);
-u32  Arch_CpuidMaxLeaf(void);
-u32  Arch_CpuidMaxExtLeaf(void);
+void X86_64_CpuidQuery(u32 leaf, u32 subleaf, Arch_CpuidRegs *out);
+u32  X86_64_CpuidMaxLeaf(void);
+u32  X86_64_CpuidMaxExtLeaf(void);
 
 #endif /* SUPERVISOR_ARCH_X86_64_CPUID_INTERNAL_H */
