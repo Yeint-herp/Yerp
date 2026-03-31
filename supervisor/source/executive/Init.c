@@ -2,6 +2,7 @@
 
 #include <acpi/Acpi.h>
 #include <arch/CpuCap.h>
+#include <arch/Interrupts.h>
 #include <arch/MmArch.h>
 #include <arch/Rng.h>
 #include <boot/Limine.h>
@@ -60,6 +61,7 @@ void Exec_InitializeEarly()
     Acpi_EarlyInit();
 
     Ob_Init();
+    Interrupt_ControllerInit();
 
     Log(INFO, "early initialization done");
 }
