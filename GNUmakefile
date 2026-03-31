@@ -48,7 +48,7 @@ OVMF_DIR := $(DEPS_DIR)/ovmf
 OVMF_CODE := $(OVMF_DIR)/OVMF_CODE.fd
 OVMF_VARS := $(OVMF_DIR)/OVMF_VARS.fd
 
-QEMUFLAGS := -M q35 -m 2G -cpu max -smp 4 -display sdl \
+QEMUFLAGS := -M q35 -m 2G -cpu max,+x2apic -smp 4 -display sdl \
 			 -M accel=tcg,smm=off \
 			 -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 			 -drive if=pflash,format=raw,readonly=on,file=$(OVMF_VARS) \
