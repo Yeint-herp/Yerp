@@ -9,12 +9,12 @@ static char           s_Brand[49];
 
 static void s_SetCap(Arch_CpuCap cap)
 {
-    s_CapBitmap[cap / 32] |= (u32)1 << (cap % 32);
+    s_CapBitmap[cap / 32] |= 1UL << (cap % 32);
 }
 
 static void s_MapBit(u32 reg, u32 bit, Arch_CpuCap cap)
 {
-    if (reg & ((u32)1 << bit))
+    if (reg & (1UL << bit))
         s_SetCap(cap);
 }
 
@@ -148,7 +148,7 @@ bool Arch_CpuHasCap(Arch_CpuCap cap)
     if (cap >= CPUCAP__COUNT)
         return false;
 
-    return (s_CapBitmap[cap / 32] & ((u32)1 << (cap % 32))) != 0;
+    return (s_CapBitmap[cap / 32] & (1UL << (cap % 32))) != 0;
 }
 
 Arch_CpuVendor Arch_CpuGetVendor(void)

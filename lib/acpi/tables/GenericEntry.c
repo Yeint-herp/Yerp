@@ -46,7 +46,7 @@ Acpi_Status Acpi_GasRead(const Acpi_Gas *gas, Acpi_Uint64 *value)
             if (Acpi_Success(st) && gas->RegisterBitOffset != 0)
                 *value >>= gas->RegisterBitOffset;
             if (Acpi_Success(st) && gas->RegisterBitWidth < 64)
-                *value &= ((Acpi_Uint64)1 << gas->RegisterBitWidth) - 1;
+                *value &= (1ULL << gas->RegisterBitWidth) - 1;
 
             return st;
         }
