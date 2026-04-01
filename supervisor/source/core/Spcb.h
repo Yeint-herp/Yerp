@@ -3,7 +3,12 @@
 
 #include <arch/Atomic.h>
 #include <arch/Spcr.h>
+#include <core/Spinlock.h>
+#include <dsa/RingBuffer.h>
+#include <executive/Dpc.h>
 #include <mm/Magazine.h>
+
+#define DPC_QUEUE_DEPTH 256
 
 struct Core_SPCB
 {
@@ -17,6 +22,9 @@ struct Core_SPCB
 
     struct Mm_PfaMagazine FreePages;
     struct Mm_PfaMagazine ZeroPages;
+
+    Core_Spinlock DpcQueueLock;
+    ringbuf_of(Dpc*, DPC_QUEUE_DEPTH) DpcQueue;
 
     struct Arch_SPCR ArchData;
     ArchId_t         ArchId;
@@ -39,7 +47,7 @@ void Core_SpcbReleaseAps(void);
 bool Core_SpcbInit(struct Core_SPCB *spcb);
 bool Core_SpcbLateInit(struct Core_SPCB *spcb);
 
-u32 Core_GetProcessorCount(void);
+u32               Core_GetProcessorCount(void);
 struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber);
 
 #endif /* SUPERVISOR_CORE_SPCB_H */

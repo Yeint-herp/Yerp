@@ -9,6 +9,7 @@
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
+#include <executive/Dpc.h>
 #include <executive/Init.h>
 #include <executive/Object.h>
 #include <executive/Pool.h>
@@ -59,11 +60,12 @@ void Exec_InitializeEarly()
     Mm_SupervisorVasInit();
 
     Acpi_EarlyInit();
-
-    Ob_Init();
     Interrupt_ControllerInit();
 
     Core_SpcbBootAll(Boot_LimineSmpReq.response);
+
+    Ob_Init();
+    Dpc_SystemInit();
 
     Log(INFO, "early initialization done");
 }
