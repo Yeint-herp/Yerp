@@ -51,3 +51,26 @@ bool Core_SpinlockTryAcquireIrq(Core_Spinlock *lock, Arch_IrqFlags *flags)
     Arch_IrqRestore(*flags);
     return false;
 }
+
+Irql_t Core_SpinlockAcquireIrql(Core_Spinlock *lock, Irql_t irql)
+{
+    Irql_t old = Irql_Raise(irql);
+    Core_SpinlockAcquire(lock);
+    return old;
+}
+
+void Core_SpinlockReleaseIrql(Core_Spinlock *lock, Irql_t oldIrql)
+{
+    Core_SpinlockRelease(lock);
+    Irql_Lower(oldIrql);
+}
+
+bool Core_SpinlockTryAcquireIrql(Core_Spinlock *lock, Irql_t irql, Irql_t *oldIrql)
+{
+    *oldIrql = Irql_Raise(irql);
+    if (Core_SpinlockTryAcquire(lock))
+        return true;
+
+    Irql_Lower(*oldIrql);
+    return false;
+}
