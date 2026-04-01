@@ -21,7 +21,7 @@ static Core_Spinlock s_AllocLock;
 
 Interrupt_Handle Interrupt_Allocate(Irql_t irql)
 {
-    if (irql < IRQL_DIRQL_MIN || irql > IRQL_IPI)
+    if (irql <= IRQL_APC || irql > IRQL_IPI)
     {
         Log(ERROR, "Interrupt_Allocate: IRQL %u out of allocatable range", irql);
         return INTERRUPT_HANDLE_NULL;
