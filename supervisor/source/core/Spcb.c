@@ -1,7 +1,9 @@
-#include <arch/Atomic.h>
+#include <mm/Vas.h>
 #define DBG_MODULE "Spcb"
 
 #include <arch/CoreLocal.h>
+#include <arch/Atomic.h>
+#include <arch/MmArch.h>
 #include <arch/CpuHint.h>
 #include <core/Memory.h>
 #include <core/Spcb.h>
@@ -117,6 +119,9 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
 
     if (!Core_SpcbInit(spcb))
         Exec_HaltCatchFire();
+
+    Arch_MmSwitchRoot(Mm_GetSupervisorVas()->PageTableRoot);
+    Arch_MmFlushTlbGlobal();
 
     Interrupt_InitAp();
 
