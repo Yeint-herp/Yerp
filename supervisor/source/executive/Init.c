@@ -11,10 +11,10 @@
 #include <debug/Panic.h>
 #include <executive/Init.h>
 #include <executive/Object.h>
+#include <executive/Pool.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
-#include <executive/Pool.h>
 #include <mm/Vas.h>
 
 void Exec_InitializeEarly()
@@ -62,6 +62,8 @@ void Exec_InitializeEarly()
 
     Ob_Init();
     Interrupt_ControllerInit();
+
+    Core_SpcbBootAll(Boot_LimineSmpReq.response);
 
     Log(INFO, "early initialization done");
 }

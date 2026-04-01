@@ -1,6 +1,8 @@
+#include <arch/Atomic.h>
 #define DBG_MODULE "Spcb"
 
 #include <arch/CoreLocal.h>
+#include <arch/CpuHint.h>
 #include <core/Memory.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
@@ -12,6 +14,9 @@
 static struct Core_SPCB *s_SpcbArray = nullptr;
 static u32               s_CpuCount  = 0;
 
+static Arch_Atomic32 s_ApReadyCount = {};
+static Arch_Atomic32 s_ApRelease    = {};
+
 u32 Core_GetProcessorCount(void)
 {
     return s_CpuCount;
@@ -22,7 +27,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     if (!mpResponse || mpResponse->cpu_count <= 1)
     {
         s_CpuCount = 1;
-        Log(TRACE, "falling back to uniprocessor mode.");
+        Log(TRACE, "falling back to uniprocessor mode");
 
         usize totalSize = sizeof(struct Core_SPCB);
         s_SpcbArray     = Mm_PermanentAllocate(totalSize, 64);
@@ -40,7 +45,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
     }
 
     s_CpuCount = mpResponse->cpu_count;
-    Log(INFO, "detected %u processors.", s_CpuCount);
+    Log(INFO, "detected %u processors", s_CpuCount);
 
     usize totalSize = sizeof(struct Core_SPCB) * s_CpuCount;
     s_SpcbArray     = Mm_PermanentAllocate(totalSize, 64);
@@ -104,4 +109,62 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
         return nullptr;
 
     return &s_SpcbArray[processorNumber];
+}
+
+[[noreturn]] static void s_ApEntry(struct limine_mp_info *info)
+{
+    struct Core_SPCB *spcb = (struct Core_SPCB *)(uptr)info->extra_argument;
+
+    if (!Core_SpcbInit(spcb))
+        Exec_HaltCatchFire();
+
+    Interrupt_InitAp();
+
+    Log(TRACE, "AP[%u] online (ArchId %u)", spcb->ProcessorNumber, spcb->ArchId);
+    Arch_AtomicAdd32(&s_ApReadyCount, 1);
+
+    while (!Arch_AtomicLoad32(&s_ApRelease))
+        Arch_CpuSleep();
+
+    // TODO release into the scheduler.
+    Exec_HaltCatchFire();
+}
+
+void Core_SpcbBootAll(struct limine_mp_response *mpResponse)
+{
+    if (s_CpuCount <= 1)
+    {
+        Log(TRACE, "no APs to boot");
+        return;
+    }
+
+    Arch_AtomicStore32(&s_ApReadyCount, 0);
+    Arch_AtomicStore32(&s_ApRelease, 0);
+
+    const ArchId_t bspId       = Arch_GetBspArchId(mpResponse);
+    u32            expectedAps = 0;
+
+    for (u32 i = 0; i < mpResponse->cpu_count; i++)
+    {
+        if (Arch_GetArchId(mpResponse->cpus[i]) == bspId)
+            continue;
+
+        Arch_AtomicStore64((Arch_Atomic64 *)&mpResponse->cpus[i]->goto_address, (uptr)s_ApEntry);
+        expectedAps++;
+    }
+
+    while (Arch_AtomicLoad32(&s_ApReadyCount) < expectedAps)
+        Arch_CpuRelax();
+
+    Log(INFO, "%u application processors online and parked", expectedAps);
+    return;
+}
+
+void Core_SpcbReleaseAps(void)
+{
+    if (s_CpuCount <= 1)
+        return;
+
+    Log(TRACE, "releasing %u parked APs", s_CpuCount - 1);
+    Arch_AtomicStore32(&s_ApRelease, 1);
 }

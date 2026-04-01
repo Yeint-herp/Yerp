@@ -29,6 +29,12 @@ struct limine_mp_response;
 /// allocates the SPCB array for all detected cores during early boot.
 bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse);
 
+/// boots all APs, waits for them to init and check in, then returns.
+void Core_SpcbBootAll(struct limine_mp_response *mpResponse);
+
+/// releases parked APs into the dispatcher.
+void Core_SpcbReleaseAps(void);
+
 /// called by each core to init it's SPCB.
 bool Core_SpcbInit(struct Core_SPCB *spcb);
 bool Core_SpcbLateInit(struct Core_SPCB *spcb);
