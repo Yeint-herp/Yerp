@@ -53,8 +53,8 @@ To build and run Yerp, you will need:
 * [x] **APIC / I/O APIC:** Interrupt controller abstraction and IRQ dispatch.
 * [x] **HPET:** High precision timer abstraction.
 * [x] **Virtual Address Space:** VAD-based virtual memory region management.
-* [ ] **Symmetric Multiprocessing (SMP):** Full initialization of Application Processors (APs).
-* [ ] **Deffered Procedure Calls (DPCs):** Support for dispatching DPCs when lowering IRQL to passive.
+* [X] **Symmetric Multiprocessing (SMP):** Full initialization of Application Processors (APs).
+* [X] **Deffered Procedure Calls (DPCs):** Support for dispatching DPCs when lowering IRQL to passive.
 * [ ] **Per-core Timer Wheel:** Support for registering, cohering and acting upon timers.
 * [ ] **LAPIC Timer Calibration:** Timer calibration using PIT / PM Timer fallbacks.
 * [ ] **Dispatcher:** Preemptive multi-threading and priority levels.
