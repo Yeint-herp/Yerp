@@ -452,7 +452,7 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
 
     bool needZero = (flags & MM_ALLOC_ZEROED) != 0;
 
-    Arch_IrqFlags     irq  = Arch_IrqSave();
+    Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
     struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
 
     struct Mm_PfaMagazine *preferred, *fallback;
@@ -479,7 +479,7 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
         entry->e1.MagazineCached = 0;
         Core_SpinlockRelease(&entry->Lock);
 
-        Arch_IrqRestore(irq);
+        Irql_Lower(oldIrql);
 
         if (needZero && preferred != &spcb->ZeroPages)
         {
@@ -515,7 +515,7 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
         entry->e1.MagazineCached = 0;
         Core_SpinlockRelease(&entry->Lock);
 
-        Arch_IrqRestore(irq);
+        Irql_Lower(oldIrql);
 
         if (needZero)
         {
@@ -526,7 +526,7 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
         return pfn;
     }
 
-    Arch_IrqRestore(irq);
+    Irql_Lower(oldIrql);
 
     pfn = Mm_RemovePageFromList(&Mm_StandbyPageListHead);
     if (pfn != MM_PFN_NULL)
@@ -578,12 +578,12 @@ void Mm_FreePages(uptr pfn, uptr count)
         entry->e1.MagazineCached = 1;
         Core_SpinlockRelease(&entry->Lock);
 
-        Arch_IrqFlags     irq  = Arch_IrqSave();
+        Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
         struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
 
         if (s_MagazinePush(&spcb->FreePages, p))
         {
-            Arch_IrqRestore(irq);
+            Irql_Lower(oldIrql);
             continue;
         }
 
@@ -592,7 +592,7 @@ void Mm_FreePages(uptr pfn, uptr count)
         bool pushed = s_MagazinePush(&spcb->FreePages, p);
         ASSERT(pushed);
 
-        Arch_IrqRestore(irq);
+        Irql_Lower(oldIrql);
     }
 }
 

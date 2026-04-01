@@ -344,7 +344,7 @@ void *Mm_SlabAlloc(Mm_SlabCache *cache, u32 tag)
         return obj;
     }
 
-    Arch_IrqFlags    irq = Arch_IrqSave();
+    Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
     Mm_SlabCpuState *cs  = s_GetCpuState(cache);
 
     if (cs->Slab != (u32)MM_PFN_NULL)
@@ -361,7 +361,7 @@ void *Mm_SlabAlloc(Mm_SlabCache *cache, u32 tag)
             entry->u3.Slab.InUse++;
             cs->LocalAllocs++;
 
-            Arch_IrqRestore(irq);
+            Irql_Lower(oldIrql);
             return obj;
         }
     }
@@ -370,7 +370,7 @@ void *Mm_SlabAlloc(Mm_SlabCache *cache, u32 tag)
     if (obj)
         cs->LocalAllocs++;
 
-    Arch_IrqRestore(irq);
+    Irql_Lower(oldIrql);
     return obj;
 }
 
@@ -408,9 +408,9 @@ void Mm_SlabFree(void *ptr)
             entry->u3.Slab.InUse--;
             Core_SpinlockRelease(&cache->Lock);
 
-            Arch_IrqFlags irq = Arch_IrqSave();
+            Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
             s_GetCpuState(cache)->LocalFrees++;
-            Arch_IrqRestore(irq);
+            Irql_Lower(oldIrql);
             return;
         }
 
@@ -419,10 +419,10 @@ void Mm_SlabFree(void *ptr)
         return;
     }
 
-    Arch_IrqFlags    irq = Arch_IrqSave();
+    Irql_t           oldIrql = Irql_Raise(IRQL_DISPATCH);
     Mm_SlabCpuState *cs  = s_GetCpuState(cache);
     cs->LocalFrees++;
-    Arch_IrqRestore(irq);
+    Irql_Lower(oldIrql);
 
     s_FreeSlowPath(cache, pfn, ptr);
 }
