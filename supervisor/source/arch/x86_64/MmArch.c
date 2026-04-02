@@ -109,7 +109,38 @@ static u64 s_TranslateCacheType(Mm_CacheType cacheType, bool huge)
     }
 }
 
-static u64 *s_WalkLevel(u64 *table, usize index, bool allocate)
+static void s_IncShareCount(uptr tablePhys)
+{
+    if (!Mm_IsPfnReady())
+        return;
+
+    Mm_Pfn *entry = Mm_GetPfnEntry(tablePhys >> PAGE_SHIFT);
+    if (!entry)
+        return;
+
+    Core_SpinlockAcquire(&entry->Lock);
+    entry->u2.ShareCount++;
+    Core_SpinlockRelease(&entry->Lock);
+}
+
+static u32 s_DecShareCount(uptr tablePhys)
+{
+    if (!Mm_IsPfnReady())
+        return 1;
+
+    Mm_Pfn *entry = Mm_GetPfnEntry(tablePhys >> PAGE_SHIFT);
+    if (!entry)
+        return 1;
+
+    Core_SpinlockAcquire(&entry->Lock);
+    entry->u2.ShareCount--;
+    u32 result = entry->u2.ShareCount;
+    Core_SpinlockRelease(&entry->Lock);
+
+    return result;
+}
+
+static u64 *s_WalkLevel(u64 *table, uptr tablePhys, usize index, bool allocate)
 {
     if (table[index] & X86_PTE_PRESENT)
     {
@@ -133,6 +164,14 @@ static u64 *s_WalkLevel(u64 *table, usize index, bool allocate)
 
         phys = pfn << PAGE_SHIFT;
         page = Mm_PhysToVirt(phys);
+
+        Mm_Pfn *newEntry = Mm_GetPfnEntry(pfn);
+        Core_SpinlockAcquire(&newEntry->Lock);
+        newEntry->u4.PteFrame   = tablePhys >> PAGE_SHIFT;
+        newEntry->u2.ShareCount = 0;
+        Core_SpinlockRelease(&newEntry->Lock);
+
+        s_IncShareCount(tablePhys);
     }
     else [[clang::unlikely]]
     {
@@ -184,15 +223,19 @@ bool Arch_MmMapPage(uptr root, uptr virtualAddr, uptr physAddr, u32 prot, Mm_Cac
 {
     u64 *pml4 = s_PhysToTable(root);
 
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(virtualAddr), true);
+    u64 *pdpt = s_WalkLevel(pml4, root, PML4_INDEX(virtualAddr), true);
     if (!pdpt)
         return false;
 
-    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(virtualAddr), true);
+    const uptr pdptPhys = pml4[PML4_INDEX(virtualAddr)] & X86_PTE_ADDR_MASK;
+
+    u64 *pd = s_WalkLevel(pdpt, pdptPhys, PDPT_INDEX(virtualAddr), true);
     if (!pd)
         return false;
 
-    u64 *pt = s_WalkLevel(pd, PD_INDEX(virtualAddr), true);
+    const uptr pdPhys = pdpt[PDPT_INDEX(virtualAddr)] & X86_PTE_ADDR_MASK;
+
+    u64 *pt = s_WalkLevel(pd, pdPhys, PD_INDEX(virtualAddr), true);
     if (!pt)
         return false;
 
@@ -205,6 +248,9 @@ bool Arch_MmMapPage(uptr root, uptr virtualAddr, uptr physAddr, u32 prot, Mm_Cac
 
     pt[index] = (physAddr & X86_PTE_ADDR_MASK) | s_TranslateProt(prot) | s_TranslateCacheType(cacheType, false);
 
+    const uptr ptPhys = pd[PD_INDEX(virtualAddr)] & X86_PTE_ADDR_MASK;
+    s_IncShareCount(ptPhys);
+
     return true;
 }
 
@@ -212,26 +258,94 @@ void Arch_MmUnmapPage(uptr root, uptr virtualAddr)
 {
     u64 *pml4 = s_PhysToTable(root);
 
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(virtualAddr), false);
-    if (!pdpt)
+    const usize pml4Idx = PML4_INDEX(virtualAddr);
+    if (!(pml4[pml4Idx] & X86_PTE_PRESENT))
+        return;
+    if (pml4[pml4Idx] & X86_PTE_HUGE)
         return;
 
-    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(virtualAddr), false);
-    if (!pd)
+    const uptr pdptPhys = pml4[pml4Idx] & X86_PTE_ADDR_MASK;
+    u64       *pdpt     = Mm_PhysToVirt(pdptPhys);
+
+    const usize pdptIdx = PDPT_INDEX(virtualAddr);
+    if (!(pdpt[pdptIdx] & X86_PTE_PRESENT))
         return;
 
-    u64 *pt = s_WalkLevel(pd, PD_INDEX(virtualAddr), false);
-    if (!pt)
+    if (pdpt[pdptIdx] & X86_PTE_HUGE)
+    {
+        pdpt[pdptIdx] = 0;
+
+        if (pml4Idx >= PML4_SUPERVISOR_START)
+            return;
+
+        if (s_DecShareCount(pdptPhys) != 0)
+            return;
+
+        pml4[pml4Idx] = 0;
+        Mm_FreePages(pdptPhys >> PAGE_SHIFT, 1);
+        return;
+    }
+
+    const uptr pdPhys = pdpt[pdptIdx] & X86_PTE_ADDR_MASK;
+    u64       *pd     = Mm_PhysToVirt(pdPhys);
+
+    const usize pdIdx = PD_INDEX(virtualAddr);
+    if (!(pd[pdIdx] & X86_PTE_PRESENT))
         return;
 
-    const usize index = PT_INDEX(virtualAddr);
-    if (!(pt[index] & X86_PTE_PRESENT))
+    if (pd[pdIdx] & X86_PTE_HUGE)
+    {
+        pd[pdIdx] = 0;
+
+        if (pml4Idx >= PML4_SUPERVISOR_START)
+            return;
+
+        if (s_DecShareCount(pdPhys) != 0)
+            return;
+
+        pdpt[pdptIdx] = 0;
+        Mm_FreePages(pdPhys >> PAGE_SHIFT, 1);
+
+        if (s_DecShareCount(pdptPhys) != 0)
+            return;
+
+        pml4[pml4Idx] = 0;
+        Mm_FreePages(pdptPhys >> PAGE_SHIFT, 1);
+        return;
+    }
+
+    const uptr ptPhys = pd[pdIdx] & X86_PTE_ADDR_MASK;
+    u64       *pt     = Mm_PhysToVirt(ptPhys);
+
+    const usize ptIdx = PT_INDEX(virtualAddr);
+    if (!(pt[ptIdx] & X86_PTE_PRESENT))
     {
         Dbg_Print("Mm: attempted to unmap non-present VA %p\n", virtualAddr);
         return;
     }
 
-    pt[index] = 0;
+    pt[ptIdx] = 0;
+
+    if (pml4Idx >= PML4_SUPERVISOR_START)
+        return;
+
+    if (s_DecShareCount(ptPhys) != 0)
+        return;
+
+    pd[pdIdx] = 0;
+    Mm_FreePages(ptPhys >> PAGE_SHIFT, 1);
+
+    if (s_DecShareCount(pdPhys) != 0)
+        return;
+
+    pdpt[pdptIdx] = 0;
+    Mm_FreePages(pdPhys >> PAGE_SHIFT, 1);
+
+    if (s_DecShareCount(pdptPhys) != 0)
+        return;
+
+    pml4[pml4Idx] = 0;
+    Mm_FreePages(pdptPhys >> PAGE_SHIFT, 1);
 }
 
 uptr Arch_MmQueryMapping(uptr root, uptr virtualAddr)
@@ -272,7 +386,7 @@ uptr Arch_MmQueryMapping(uptr root, uptr virtualAddr)
 static bool s_MapPage1G(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
 {
     u64 *pml4 = s_PhysToTable(root);
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    u64 *pdpt = s_WalkLevel(pml4, root, PML4_INDEX(va), true);
     if (!pdpt)
         return false;
 
@@ -282,6 +396,9 @@ static bool s_MapPage1G(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
 
     pdpt[index] = (pa & X86_PTE_ADDR_MASK_1G) | X86_PTE_HUGE | flags | cacheFlags;
 
+    const uptr pdptPhys = pml4[PML4_INDEX(va)] & X86_PTE_ADDR_MASK;
+    s_IncShareCount(pdptPhys);
+
     return true;
 }
 
@@ -289,11 +406,13 @@ static bool s_MapPage2M(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
 {
     u64 *pml4 = s_PhysToTable(root);
 
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    u64 *pdpt = s_WalkLevel(pml4, root, PML4_INDEX(va), true);
     if (!pdpt)
         return false;
 
-    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(va), true);
+    const uptr pdptPhys = pml4[PML4_INDEX(va)] & X86_PTE_ADDR_MASK;
+
+    u64 *pd = s_WalkLevel(pdpt, pdptPhys, PDPT_INDEX(va), true);
     if (!pd)
         return false;
 
@@ -303,6 +422,9 @@ static bool s_MapPage2M(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
 
     pd[index] = (pa & X86_PTE_ADDR_MASK_2M) | X86_PTE_HUGE | flags | cacheFlags;
 
+    const uptr pdPhys = pdpt[PDPT_INDEX(va)] & X86_PTE_ADDR_MASK;
+    s_IncShareCount(pdPhys);
+
     return true;
 }
 
@@ -310,15 +432,19 @@ static bool s_MapPage4K(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
 {
     u64 *pml4 = s_PhysToTable(root);
 
-    u64 *pdpt = s_WalkLevel(pml4, PML4_INDEX(va), true);
+    u64 *pdpt = s_WalkLevel(pml4, root, PML4_INDEX(va), true);
     if (!pdpt)
         return false;
 
-    u64 *pd = s_WalkLevel(pdpt, PDPT_INDEX(va), true);
+    const uptr pdptPhys = pml4[PML4_INDEX(va)] & X86_PTE_ADDR_MASK;
+
+    u64 *pd = s_WalkLevel(pdpt, pdptPhys, PDPT_INDEX(va), true);
     if (!pd)
         return false;
 
-    u64 *pt = s_WalkLevel(pd, PD_INDEX(va), true);
+    const uptr pdPhys = pdpt[PDPT_INDEX(va)] & X86_PTE_ADDR_MASK;
+
+    u64 *pt = s_WalkLevel(pd, pdPhys, PD_INDEX(va), true);
     if (!pt)
         return false;
 
@@ -327,6 +453,9 @@ static bool s_MapPage4K(uptr root, uptr va, uptr pa, u64 flags, u64 cacheFlags)
         return false;
 
     pt[index] = (pa & X86_PTE_ADDR_MASK) | flags | cacheFlags;
+
+    const uptr ptPhys = pd[PD_INDEX(va)] & X86_PTE_ADDR_MASK;
+    s_IncShareCount(ptPhys);
 
     return true;
 }
