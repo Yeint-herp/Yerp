@@ -6,21 +6,22 @@ ARCH ?= x86_64
 BUILD_DIR ?= ../../build/$(ARCH)/$(MODE)/lib/acpi
 
 ifeq ($(ARCH),x86_64)
-    TARGET_CC   := x86_64-unknown-none-elf
+    TARGET := x86_64-unknown-yerp
     ARCH_CFLAGS := -m64 -march=x86-64 -mcmodel=kernel -mno-red-zone \
                    -mno-80387 -mno-mmx -mno-sse -mno-sse2 -mno-avx -msoft-float
 else
     $(error Unsupported ARCH: $(ARCH))
 endif
 
-CC := clang
-AR := llvm-ar
+TC_INST ?= $(abspath ../../build/toolchain/install)
+CC := $(TC_INST)/bin/clang
+AR := $(TC_INST)/bin/llvm-ar
 
 OBJ_DIR := $(BUILD_DIR)/obj
 OUTPUT := $(BUILD_DIR)/libacpi.a
 
 CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
-                 --target=$(TARGET_CC) \
+                 --target=$(TARGET) \
                  -ffreestanding -fno-stack-check -fno-pic -fwrapv \
                  -fno-omit-frame-pointer \
                  $(ARCH_CFLAGS) \

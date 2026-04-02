@@ -12,7 +12,7 @@ ifeq ($(filter $(MODE),debug release),)
 endif
 
 ifeq ($(filter $(ARCH),x86_64),)
-    $(error Arch must be set to 'x86_64'.)
+	$(error Arch must be set to 'x86_64'.)
 endif
 
 BUILD_ROOT := $(abspath build)/$(ARCH)
@@ -22,6 +22,7 @@ BUILD_DIR := $(BUILD_ROOT)/$(MODE)
 LIB_BUILD_DIR := $(BUILD_DIR)/lib
 ISO_DIR := $(BUILD_DIR)/iso_root
 HDD_DIR := $(BUILD_DIR)/hdd_root
+TC_INST := $(abspath build/toolchain/install)
 
 HDD_IMG := $(BUILD_DIR)/$(OS_NAME).hdd
 ISO_IMG := $(BUILD_DIR)/$(OS_NAME).iso
@@ -39,6 +40,11 @@ MCOPY := mcopy
 GIT := git
 CURL := curl
 
+export CC := $(TC_INST)/bin/clang
+export LD := $(TC_INST)/bin/ld.lld
+export AR := $(TC_INST)/bin/llvm-ar
+export EXTRA_CFLAGS ?=
+
 DEPS_DIR := deps
 LIMINE_DIR := $(DEPS_DIR)/limine
 LIMINE_REPO := https://github.com/limine-bootloader/limine.git
@@ -55,19 +61,25 @@ QEMUFLAGS := -M q35 -m 2G -cpu max,+x2apic -smp 4 -display sdl \
 			 -debugcon mon:stdio -no-reboot -no-shutdown \
 			 -d int -D $(BUILD_ROOT)/qemu_log.txt
 
-.PHONY: all clean distclean run-hdd run-iso hdd iso libs supervisor deps
+.PHONY: all clean distclean run-hdd run-iso hdd iso libs supervisor deps toolchain toolchain-snapshot
 
 all: run-hdd
 
 libs:
-	@$(MAKE) -C lib MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+	@$(MAKE) -C lib MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
 deps: $(LIMINE_DIR)/limine $(OVMF_CODE)
 
 supervisor: libs
 	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) \
-		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) \
+		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST) \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+
+toolchain:
+	@$(MAKE) -C toolchain
+
+toolchain-snapshot:
+	@$(MAKE) -C toolchain snapshot
 
 hdd: supervisor deps
 	@mkdir -p $(BUILD_DIR)

@@ -13,7 +13,7 @@ all: $(SUBDIRS)
 
 $(SUBDIRS):
 	@$(MAKE) -C $@ MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/$@) \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+		TC_INST=$(TC_INST) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
 clean:
 	@for d in $(SUBDIRS); do \
