@@ -1,0 +1,337 @@
+diff --git a/clang/lib/Basic/Targets.cpp b/clang/lib/Basic/Targets.cpp
+index 263253918..48b06e738 100644
+--- a/clang/lib/Basic/Targets.cpp
++++ b/clang/lib/Basic/Targets.cpp
+@@ -166,6 +166,8 @@ std::unique_ptr<TargetInfo> AllocateTarget(const llvm::Triple &Triple,
+     case llvm::Triple::Managarm:
+       return std::make_unique<ManagarmTargetInfo<AArch64leTargetInfo>>(Triple,
+                                                                        Opts);
++    case llvm::Triple::Yerp:
++      return std::make_unique<YerpTargetInfo<AArch64leTargetInfo>>(Triple, Opts);
+     case llvm::Triple::NetBSD:
+       return std::make_unique<NetBSDTargetInfo<AArch64leTargetInfo>>(Triple,
+                                                                      Opts);
+@@ -471,6 +473,8 @@ std::unique_ptr<TargetInfo> AllocateTarget(const llvm::Triple &Triple,
+     case llvm::Triple::Managarm:
+       return std::make_unique<ManagarmTargetInfo<RISCV64TargetInfo>>(Triple,
+                                                                      Opts);
++    case llvm::Triple::Yerp:
++      return std::make_unique<YerpTargetInfo<RISCV64TargetInfo>>(Triple, Opts);
+     case llvm::Triple::Hurd:
+       return std::make_unique<HurdTargetInfo<RISCV64TargetInfo>>(Triple, Opts);
+     default:
+@@ -660,6 +664,8 @@ std::unique_ptr<TargetInfo> AllocateTarget(const llvm::Triple &Triple,
+     case llvm::Triple::Managarm:
+       return std::make_unique<ManagarmTargetInfo<X86_64TargetInfo>>(Triple,
+                                                                     Opts);
++    case llvm::Triple::Yerp:
++      return std::make_unique<YerpTargetInfo<X86_64TargetInfo>>(Triple, Opts);
+     default:
+       return std::make_unique<X86_64TargetInfo>(Triple, Opts);
+     }
+diff --git a/clang/lib/Basic/Targets/OSTargets.h b/clang/lib/Basic/Targets/OSTargets.h
+index 04608649a..01ba4561b 100644
+--- a/clang/lib/Basic/Targets/OSTargets.h
++++ b/clang/lib/Basic/Targets/OSTargets.h
+@@ -446,6 +446,32 @@ public:
+   }
+ };
+ 
++template <typename Target>
++class LLVM_LIBRARY_VISIBILITY YerpTargetInfo : public OSTargetInfo<Target> {
++  protected:
++    void getOSDefines(const LangOptions &Opts, const llvm::Triple &Triple, MacroBuilder &Builder) const override {
++      Builder.defineMacro("_YERP");
++      Builder.defineMacro("__yerp__");
++
++      if (this->HasFloat128)
++        Builder.defineMacro("__FLOAT128__");
++    }
++
++  public:
++    YerpTargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts)
++        : OSTargetInfo<Target>(Triple, Opts) {
++      this->TheCXXABI.set(TargetCXXABI::GenericItanium);
++
++      switch (Triple.getArch()) {
++        default: break;
++        case llvm::Triple::x86:
++        case llvm::Triple::x86_64:
++          this->HasFloat128 = true;
++          break;
++      }
++    }
++};
++
+ // NetBSD Target
+ template <typename Target>
+ class LLVM_LIBRARY_VISIBILITY NetBSDTargetInfo : public OSTargetInfo<Target> {
+diff --git a/clang/lib/Driver/CMakeLists.txt b/clang/lib/Driver/CMakeLists.txt
+index 0026ba899..59d885e2c 100644
+--- a/clang/lib/Driver/CMakeLists.txt
++++ b/clang/lib/Driver/CMakeLists.txt
+@@ -68,6 +68,7 @@ add_clang_library(clangDriver
+   ToolChains/LFILinux.cpp
+   ToolChains/Linux.cpp
+   ToolChains/Managarm.cpp
++  ToolChains/Yerp.cpp
+   ToolChains/MipsLinux.cpp
+   ToolChains/MinGW.cpp
+   ToolChains/MSP430.cpp
+diff --git a/clang/lib/Driver/ToolChains/Yerp.cpp b/clang/lib/Driver/ToolChains/Yerp.cpp
+new file mode 100644
+index 000000000..a2b241841
+--- /dev/null
++++ b/clang/lib/Driver/ToolChains/Yerp.cpp
+@@ -0,0 +1,111 @@
++//===--- Yerp.cpp - Yerp ToolChain Implementation -------------------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++#include "Yerp.h"
++#include "clang/Driver/CommonArgs.h"
++#include "clang/Driver/Compilation.h"
++#include "clang/Driver/Driver.h"
++#include "clang/Driver/InputInfo.h"
++#include "clang/Options/Options.h"
++#include "llvm/Option/ArgList.h"
++#include "llvm/Support/Path.h"
++
++using namespace clang::driver;
++using namespace clang::driver::toolchains;
++using namespace clang;
++using namespace llvm::opt;
++
++Yerp::Yerp(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
++    : ToolChain(D, Triple, Args) {
++  std::string SysRoot = computeSysRoot();
++  if (!SysRoot.empty())
++    getFilePaths().push_back(SysRoot + "/lib");
++
++  getProgramPaths().push_back(D.Dir);
++}
++
++std::string Yerp::computeSysRoot() const {
++  if (!getDriver().SysRoot.empty())
++    return getDriver().SysRoot;
++
++  return std::string();
++}
++
++void Yerp::addClangTargetOptions(const ArgList &DriverArgs,
++                                 ArgStringList &CC1Args,
++                                 Action::OffloadKind DeviceOffloadKind) const {
++  if (!DriverArgs.hasArg(options::OPT_fno_unwind_tables))
++    CC1Args.push_back("-funwind-tables=2");
++
++  CC1Args.push_back("-fseh-exceptions");
++}
++
++void Yerp::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
++                                     ArgStringList &CC1Args) const {
++  if (DriverArgs.hasArg(options::OPT_nostdinc))
++    return;
++
++  std::string SysRoot = computeSysRoot();
++
++  if (!DriverArgs.hasArg(options::OPT_nobuiltininc)) {
++    SmallString<128> ResourceInclude(getDriver().ResourceDir);
++    llvm::sys::path::append(ResourceInclude, "include");
++    addSystemInclude(DriverArgs, CC1Args, ResourceInclude);
++  }
++
++  if (DriverArgs.hasArg(options::OPT_nostdlibinc))
++    return;
++
++  if (!SysRoot.empty()) {
++    addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + "/include");
++    addExternCSystemInclude(DriverArgs, CC1Args, SysRoot + "/usr/include");
++  }
++}
++
++Tool *Yerp::buildLinker() const {
++  return new tools::yerp::Linker(*this);
++}
++
++void tools::yerp::Linker::ConstructJob(Compilation &C, const JobAction &JA,
++                                       const InputInfo &Output,
++                                       const InputInfoList &Inputs,
++                                       const ArgList &Args,
++                                       const char *LinkingOutput) const {
++  const auto &TC = static_cast<const toolchains::Yerp &>(getToolChain());
++
++  ArgStringList CmdArgs;
++
++  CmdArgs.push_back("-o");
++  CmdArgs.push_back(Output.getFilename());
++
++  CmdArgs.push_back("-nostdlib");
++
++  if (!Args.hasArg(options::OPT_shared))
++    CmdArgs.push_back("-static");
++
++  CmdArgs.push_back("--eh-frame-hdr");
++
++  std::string SysRoot = TC.computeSysRoot();
++  if (!SysRoot.empty())
++    CmdArgs.push_back(Args.MakeArgString("--sysroot=" + SysRoot));
++
++  for (const auto &Path : TC.getFilePaths())
++    CmdArgs.push_back(Args.MakeArgString("-L" + Path));
++
++  Args.addAllArgs(CmdArgs, {options::OPT_T, options::OPT_T_Group,
++                            options::OPT_Z_Flag, options::OPT_z});
++
++  AddLinkerInputs(TC, Inputs, Args, CmdArgs, JA);
++
++  Args.addAllArgs(CmdArgs, {options::OPT_l});
++
++  const char *Exec = Args.MakeArgString(TC.GetLinkerPath());
++  C.addCommand(std::make_unique<Command>(JA, *this,
++                                         ResponseFileSupport::AtFileCurCP(),
++                                         Exec, CmdArgs, Inputs, Output));
++}
+diff --git a/clang/lib/Driver/ToolChains/Yerp.h b/clang/lib/Driver/ToolChains/Yerp.h
+new file mode 100644
+index 000000000..72d28be47
+--- /dev/null
++++ b/clang/lib/Driver/ToolChains/Yerp.h
+@@ -0,0 +1,93 @@
++//===--- Yerp.h - Yerp ToolChain Implementation -----------------*- C++ -*-===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++#ifndef LLVM_CLANG_LIB_DRIVER_TOOLCHAINS_YERP_H
++#define LLVM_CLANG_LIB_DRIVER_TOOLCHAINS_YERP_H
++
++#include "Gnu.h"
++#include "clang/Driver/Tool.h"
++#include "clang/Driver/ToolChain.h"
++
++namespace clang {
++namespace driver {
++namespace toolchains {
++
++class LLVM_LIBRARY_VISIBILITY Yerp : public ToolChain {
++public:
++  Yerp(const Driver &D, const llvm::Triple &Triple,
++       const llvm::opt::ArgList &Args);
++
++  bool HasNativeLLVMSupport() const override { return true; }
++  bool isPICDefault() const override { return false; }
++  bool isPIEDefault(const llvm::opt::ArgList &Args) const override {
++    return false;
++  }
++  bool isPICDefaultForced() const override { return false; }
++
++  bool IsIntegratedAssemblerDefault() const override { return true; }
++  bool IsUnwindTablesDefault(const llvm::opt::ArgList &Args) const {
++    return true;
++  }
++  bool useIntegratedAs() const override { return true; }
++  bool useLLD() const { return true; }
++
++  UnwindTableLevel getDefaultUnwindTableLevel(const llvm::opt::ArgList &Args) const override {
++    return UnwindTableLevel::Asynchronous;
++  }
++
++  RuntimeLibType GetDefaultRuntimeLibType() const override {
++    return ToolChain::RLT_CompilerRT;
++  }
++  CXXStdlibType GetDefaultCXXStdlibType() const override {
++    return ToolChain::CST_Libcxx;
++  }
++  UnwindLibType GetUnwindLibType(const llvm::opt::ArgList &Args) const override {
++    return ToolChain::UNW_None;
++  }
++
++  bool needsUnwindTableEntry() const { return true; }
++
++  void
++  AddClangSystemIncludeArgs(const llvm::opt::ArgList &DriverArgs,
++                            llvm::opt::ArgStringList &CC1Args) const override;
++
++  void addClangTargetOptions(const llvm::opt::ArgList &DriverArgs,
++                             llvm::opt::ArgStringList &CC1Args,
++                             Action::OffloadKind DeviceOffloadKind) const override;
++
++  std::string computeSysRoot() const override;
++
++protected:
++  Tool *buildLinker() const override;
++};
++
++} // namespace toolchains
++
++namespace tools {
++namespace yerp {
++
++class LLVM_LIBRARY_VISIBILITY Linker final : public Tool {
++public:
++  Linker(const ToolChain &TC) : Tool("yerp::Linker", "ld.lld", TC) {}
++
++  bool hasIntegratedCPP() const override { return false; }
++  bool isLinkJob() const override { return true; }
++
++  void ConstructJob(Compilation &C, const JobAction &JA,
++                    const InputInfo &Output, const InputInfoList &Inputs,
++                    const llvm::opt::ArgList &TCArgs,
++                    const char *LinkingOutput) const override;
++};
++
++} // namespace yerp
++} // namespace tools
++
++} // namespace driver
++} // namespace clang
++
++#endif // LLVM_CLANG_LIB_DRIVER_TOOLCHAINS_YERP_H
+diff --git a/llvm/include/llvm/TargetParser/Triple.h b/llvm/include/llvm/TargetParser/Triple.h
+index 9c83abeeb..5e4223d74 100644
+--- a/llvm/include/llvm/TargetParser/Triple.h
++++ b/llvm/include/llvm/TargetParser/Triple.h
+@@ -218,6 +218,7 @@ public:
+     Lv2, // PS3
+     MacOSX,
+     Managarm,
++    Yerp,
+     NetBSD,
+     OpenBSD,
+     Solaris,
+@@ -892,6 +893,8 @@ public:
+ 
+   bool isOSManagarm() const { return getOS() == Triple::Managarm; }
+ 
++  bool isYerp() const { return getOS() == Triple::Yerp; }
++
+   bool isShaderStageEnvironment() const {
+     EnvironmentType Env = getEnvironment();
+     return Env == Triple::Pixel || Env == Triple::Vertex ||
+diff --git a/llvm/lib/TargetParser/Triple.cpp b/llvm/lib/TargetParser/Triple.cpp
+index a4f9dd42c..e96fcf266 100644
+--- a/llvm/lib/TargetParser/Triple.cpp
++++ b/llvm/lib/TargetParser/Triple.cpp
+@@ -314,6 +314,7 @@ StringRef Triple::getOSTypeName(OSType Kind) {
+   case MacOSX: return "macosx";
+   case Managarm:
+     return "managarm";
++  case Yerp: return "yerp";
+   case Mesa3D: return "mesa3d";
+   case NVCL: return "nvcl";
+   case NetBSD: return "netbsd";
+@@ -718,6 +719,7 @@ static Triple::OSType parseOS(StringRef OSName) {
+       .StartsWith("lv2", Triple::Lv2)
+       .StartsWith("macos", Triple::MacOSX)
+       .StartsWith("managarm", Triple::Managarm)
++      .StartsWith("yerp", Triple::Yerp)
+       .StartsWith("netbsd", Triple::NetBSD)
+       .StartsWith("openbsd", Triple::OpenBSD)
+       .StartsWith("solaris", Triple::Solaris)
