@@ -10,6 +10,7 @@
 #include <arch/x86_64/LocalApic.h>
 #include <arch/x86_64/Msr.h>
 #include <arch/x86_64/Spcr.h>
+#include <arch/x86_64/Tsc.h>
 #include <core/Spcb.h>
 #include <core/Spinlock.h>
 #include <debug/DbgPrint.h>
@@ -346,13 +347,15 @@ static void s_DisablePic8259(void)
     Log(TRACE, "8259 PIC disabled");
 }
 
-void Interrupt_ControllerInit(void)
+void Interrupt_ControllerInit(void) // TODO move to late arch init.
 {
     X86_64_ApicDiscover();
     s_DisablePic8259();
 
     if (!X86_64_HpetInit())
         Panic("HPET init failed, cannot calibrate LAPIC timer");
+
+    X86_64_TscInit();
 
     X86_64_LocalApicInit();
     X86_64_IoApicInit();
