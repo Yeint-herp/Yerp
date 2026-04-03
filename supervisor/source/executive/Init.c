@@ -1,10 +1,14 @@
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
+#include <arch/CoreLocal.h>
 #include <arch/CpuCap.h>
 #include <arch/Interrupts.h>
+#include <arch/Irql.h>
 #include <arch/MmArch.h>
 #include <arch/Rng.h>
+#include <arch/x86_64/RegisterFrame.h>
+#include <arch/x86_64/Spcr.h>
 #include <boot/Limine.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
@@ -13,6 +17,7 @@
 #include <executive/Init.h>
 #include <executive/Object.h>
 #include <executive/Pool.h>
+#include <executive/Timer.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
@@ -67,10 +72,12 @@ void Exec_InitializeEarly()
     Ob_Init();
     Dpc_SystemInit();
 
+    Ex_TimerSystemInit();
+
     Log(INFO, "early initialization done");
 }
 
-void Exec_DefaultInterruptHandler(void)
+void Exec_DefaultInterruptHandler(Arch_RegisterFrame *frame)
 {
-    Panic("interrupt invoked before handler ready");
+    Panic_Fault(frame, "interrupt invoked before handler ready");
 }
