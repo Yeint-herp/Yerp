@@ -3,6 +3,7 @@
 
 #include <arch/Atomic.h>
 #include <arch/Spcr.h>
+#include <executive/Timer.h>
 #include <core/Spinlock.h>
 #include <dsa/RingBuffer.h>
 #include <executive/Dpc.h>
@@ -25,6 +26,8 @@ struct Core_SPCB
 
     Core_Spinlock DpcQueueLock;
     ringbuf_of(Dpc*, DPC_QUEUE_DEPTH) DpcQueue;
+
+    Ex_TimerCpu Timers;
 
     struct Arch_SPCR ArchData;
     ArchId_t         ArchId;

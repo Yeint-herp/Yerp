@@ -1,6 +1,7 @@
-#include <mm/Vas.h>
 #define DBG_MODULE "Spcb"
 
+#include <mm/Vas.h>
+#include <executive/Timer.h>
 #include <arch/CoreLocal.h>
 #include <arch/Atomic.h>
 #include <arch/MmArch.h>
@@ -124,6 +125,7 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
     Arch_MmFlushTlbGlobal();
 
     Interrupt_InitAp();
+    Ex_TimerCpuInit(&spcb->Timers);
 
     Log(TRACE, "AP[%u] online (ArchId %u)", spcb->ProcessorNumber, spcb->ArchId);
     Arch_AtomicAdd32(&s_ApReadyCount, 1);
