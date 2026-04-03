@@ -43,7 +43,6 @@ CURL := curl
 export CC := $(TC_INST)/bin/clang
 export LD := $(TC_INST)/bin/ld.lld
 export AR := $(TC_INST)/bin/llvm-ar
-export EXTRA_CFLAGS ?=
 
 DEPS_DIR := deps
 LIMINE_DIR := $(DEPS_DIR)/limine
@@ -66,14 +65,13 @@ QEMUFLAGS := -M q35 -m 2G -cpu max,+x2apic -smp 4 -display sdl \
 all: run-hdd
 
 libs:
-	@$(MAKE) -C lib MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST) EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+	@$(MAKE) -C lib MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST)
 
 deps: $(LIMINE_DIR)/limine $(OVMF_CODE)
 
 supervisor: libs
 	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) \
-		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST) \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
+		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST)
 
 toolchain:
 	@$(MAKE) -C toolchain

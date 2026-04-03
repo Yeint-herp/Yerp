@@ -14,13 +14,6 @@ Supervisor_SystemStartup:
     call Ex_InitializeEarly
     call Core_StackGuardInit
 
-#ifdef CI_BUILD
-    call CiTest_Entry
-
-    mov dx, 0xf4
-    out dx, al
-#endif
-
     .cfi_endproc
 .size Supervisor_SystemStartup, . - Supervisor_SystemStartup
 

@@ -25,8 +25,7 @@ CFLAGS_COMMON := -std=c23 -pipe -Wall -Wextra -Werror \
                  -ffreestanding -fno-stack-check -fno-pic -fwrapv \
                  -fno-omit-frame-pointer \
                  $(ARCH_CFLAGS) \
-                 -isystem.. \
-                 $(EXTRA_CFLAGS)
+                 -isystem..
 
 ifeq ($(MODE),debug)
     CFLAGS_MODE := -O0 -g3
