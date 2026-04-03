@@ -88,4 +88,11 @@ void X86_64_LocalApicTimerPeriodic(u8 vector, u64 us);
 void X86_64_LocalApicTimerStop(void);
 u32  X86_64_LocalApicTimerReadCurrent(void);
 
+void X86_64_LocalApicTimerOneShotTicks(u8 vector, u32 ticks);
+
+u32 X86_64_LocalApicTimerGetRate(void);
+
+bool X86_64_LocalApicTimerHasTscDeadline(void);
+void X86_64_LocalApicTimerTscDeadline(u8 vector, u64 deadline);
+
 #endif /* SUPERVISOR_ARCH_X86_64_LOCALAPIC_H */

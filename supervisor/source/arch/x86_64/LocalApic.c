@@ -5,6 +5,7 @@
 #include <arch/Io.h>
 #include <arch/MmArch.h>
 #include <arch/x86_64/Apic.h>
+#include <arch/x86_64/Cpuid.h>
 #include <arch/x86_64/Hpet.h>
 #include <arch/x86_64/LocalApic.h>
 #include <arch/x86_64/Msr.h>
@@ -220,4 +221,29 @@ void X86_64_LocalApicTimerStop(void)
 u32 X86_64_LocalApicTimerReadCurrent(void)
 {
     return X86_64_LocalApicReadReg(LAPIC_REG_TIMER_CURRENT);
+}
+
+void X86_64_LocalApicTimerOneShotTicks(u8 vector, u32 ticks)
+{
+    X86_64_LocalApicWriteReg(LAPIC_REG_TIMER_DIVIDE, s_TimerCal.Divider);
+    X86_64_LocalApicWriteReg(LAPIC_REG_LVT_TIMER, LAPIC_TIMER_ONESHOT | vector);
+    X86_64_LocalApicWriteReg(LAPIC_REG_TIMER_INIT, ticks);
+}
+
+u32 X86_64_LocalApicTimerGetRate(void)
+{
+    return s_TimerCal.TicksPerUs;
+}
+
+bool X86_64_LocalApicTimerHasTscDeadline(void)
+{
+    Arch_CpuidRegs regs;
+    X86_64_CpuidQuery(1, 0, &regs);
+    return (regs.Ecx & (1u << 24)) != 0;
+}
+
+void X86_64_LocalApicTimerTscDeadline(u8 vector, u64 deadline)
+{
+    X86_64_LocalApicWriteReg(LAPIC_REG_LVT_TIMER, LAPIC_TIMER_TSC_DEADLINE | vector);
+    X86_64_WriteMsr(0x6E0, deadline);
 }
