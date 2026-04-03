@@ -113,8 +113,8 @@ IsrCommonInterruptStub:
     mov rbx, qword ptr [rsp + TF_VEC_OFF]
     shl rbx, 4
 
-    mov rsi, qword ptr gs:[X86_64_SPCR_ISR_TABLE_OFFSET + rbx + 8]
-    mov rax, qword ptr gs:[X86_64_SPCR_ISR_TABLE_OFFSET + rbx]
+    mov rsi, qword ptr gs:[X86_64_SPCB_ISR_TABLE_OFFSET + rbx + 8]
+    mov rax, qword ptr gs:[X86_64_SPCB_ISR_TABLE_OFFSET + rbx]
 
     cld
     call rax
