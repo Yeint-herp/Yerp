@@ -93,7 +93,7 @@ bool Interrupt_Register(Interrupt_Handle handle, Interrupt_Handler handler, void
     struct Core_SPCB           *spcb = Arch_GetCurrentSpcb();
     Arch_InterruptRegistration *reg  = &spcb->ArchData.IsrTable[vec];
 
-    if (reg->Routine != (uptr)Exec_DefaultInterruptHandler)
+    if (reg->Routine != (uptr)Ex_DefaultInterruptHandler)
     {
         Log(ERROR, "vector %u already registered on core %u", vec, spcb->ProcessorNumber);
         return false;
@@ -116,7 +116,7 @@ bool Interrupt_Deregister(Interrupt_Handle handle)
     struct Core_SPCB           *spcb = Arch_GetCurrentSpcb();
     Arch_InterruptRegistration *reg  = &spcb->ArchData.IsrTable[vec];
 
-    reg->Routine = (uptr)Exec_DefaultInterruptHandler;
+    reg->Routine = (uptr)Ex_DefaultInterruptHandler;
     Arch_CompilerBarrier();
     reg->Context = nullptr;
 
@@ -137,7 +137,7 @@ bool Interrupt_RegisterGlobal(Interrupt_Handle handle, Interrupt_Handler handler
     for (u32 i = 0; i < cpuCount; i++)
     {
         struct Core_SPCB *spcb = Core_SpcbGetByNumber(i);
-        if (spcb->ArchData.IsrTable[vec].Routine != (uptr)Exec_DefaultInterruptHandler)
+        if (spcb->ArchData.IsrTable[vec].Routine != (uptr)Ex_DefaultInterruptHandler)
         {
             Log(ERROR, "vector %u already registered on core %u, aborting global registration", vec,
                 spcb->ProcessorNumber);
@@ -179,7 +179,7 @@ bool Interrupt_DeregisterGlobal(Interrupt_Handle handle)
         struct Core_SPCB           *spcb = Core_SpcbGetByNumber(i);
         Arch_InterruptRegistration *reg  = &spcb->ArchData.IsrTable[vec];
 
-        reg->Routine = (uptr)Exec_DefaultInterruptHandler;
+        reg->Routine = (uptr)Ex_DefaultInterruptHandler;
         Arch_CompilerBarrier();
         reg->Context = nullptr;
     }

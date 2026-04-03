@@ -13,7 +13,7 @@ bool Arch_SpcrInit(struct Arch_SPCR *spcr)
     X86_64_IdtInit(&spcr->Idt);
 
     for (int i = 0; i < 256; i++)
-        spcr->IsrTable[i].Routine = (uptr)Exec_DefaultInterruptHandler;
+        spcr->IsrTable[i].Routine = (uptr)Ex_DefaultInterruptHandler;
 
     Log(TRACE, "SPCR[%i] early initialized", container_of(spcr, struct Core_SPCB, ArchData)->ProcessorNumber);
 

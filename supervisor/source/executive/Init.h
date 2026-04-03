@@ -1,13 +1,13 @@
-#ifndef SUPERVISOR_Exec_Exec_H
-#define SUPERVISOR_Exec_Exec_H
+#ifndef SUPERVISOR_Ex_Ex_H
+#define SUPERVISOR_Ex_Ex_H
 
 #include <arch/RegisterFrame.h>
 
 #define x86_64 1
 
-[[noreturn]] void Exec_HaltCatchFire(void);
-[[noreturn]] void Exec_DefaultInterruptHandler(Arch_RegisterFrame *frame);
+[[noreturn]] void Ex_HaltCatchFire(void);
+[[noreturn]] void Ex_DefaultInterruptHandler(Arch_RegisterFrame *frame);
 
-void Exec_InitializeEarly(void);
+void Ex_InitializeEarly(void);
 
-#endif /* SUPERVISOR_Exec_Exec_H */
+#endif /* SUPERVISOR_Ex_Ex_H */

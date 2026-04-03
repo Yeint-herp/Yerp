@@ -23,7 +23,7 @@ bool Panic_RegisterHook(Panic_Hook hook)
 [[noreturn]] static void s_PanicCore(const Arch_RegisterFrame *frame, const char *fmt, Core_VarArgs ap)
 {
     if (s_PanicActive)
-        Exec_HaltCatchFire();
+        Ex_HaltCatchFire();
 
     s_PanicActive = true;
 
@@ -59,7 +59,7 @@ bool Panic_RegisterHook(Panic_Hook hook)
     Dbg_FmtString(&ctx, "\n*** System halted ***\n", 23);
     Dbg_FmtFlush(&ctx);
 
-    Exec_HaltCatchFire();
+    Ex_HaltCatchFire();
 }
 
 void Panic_WithFrame(const Arch_RegisterFrame *frame, const char *fmt, ...)

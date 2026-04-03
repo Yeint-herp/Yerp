@@ -23,7 +23,7 @@
 #include <mm/PfnDb.h>
 #include <mm/Vas.h>
 
-void Exec_InitializeEarly()
+void Ex_InitializeEarly()
 {
     Dbg_RegisterSinker(g_RingBufSinker);
     Log(TRACE, "early ring buffer sinker ready");
@@ -77,7 +77,7 @@ void Exec_InitializeEarly()
     Log(INFO, "early initialization done");
 }
 
-void Exec_DefaultInterruptHandler(Arch_RegisterFrame *frame)
+void Ex_DefaultInterruptHandler(Arch_RegisterFrame *frame)
 {
     Panic_Fault(frame, "interrupt invoked before handler ready");
 }

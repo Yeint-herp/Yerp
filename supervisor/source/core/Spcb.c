@@ -119,7 +119,7 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
     struct Core_SPCB *spcb = (struct Core_SPCB *)(uptr)info->extra_argument;
 
     if (!Core_SpcbInit(spcb))
-        Exec_HaltCatchFire();
+        Ex_HaltCatchFire();
 
     Arch_MmSwitchRoot(Mm_GetSupervisorVas()->PageTableRoot);
     Arch_MmFlushTlbGlobal();
@@ -134,7 +134,7 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
         Arch_CpuSleep();
 
     // TODO release into the scheduler.
-    Exec_HaltCatchFire();
+    Ex_HaltCatchFire();
 }
 
 void Core_SpcbBootAll(struct limine_mp_response *mpResponse)

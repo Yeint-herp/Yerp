@@ -3,7 +3,7 @@
 .section .text, "ax", @progbits
 .balign 16
 
-.extern Exec_InitializeEarly
+.extern Ex_InitializeEarly
 
 .global Supervisor_SystemStartup
 .type Supervisor_SystemStartup, @function
@@ -11,7 +11,7 @@ Supervisor_SystemStartup:
     .cfi_startproc
     .cfi_undefined rip
 
-    call Exec_InitializeEarly
+    call Ex_InitializeEarly
     call Core_StackGuardInit
 
 #ifdef CI_BUILD
@@ -24,9 +24,9 @@ Supervisor_SystemStartup:
     .cfi_endproc
 .size Supervisor_SystemStartup, . - Supervisor_SystemStartup
 
-.global Exec_HaltCatchFire
-.type Exec_HaltCatchFire, @function
-Exec_HaltCatchFire:
+.global Ex_HaltCatchFire
+.type Ex_HaltCatchFire, @function
+Ex_HaltCatchFire:
     .cfi_startproc
 
     cli
@@ -35,4 +35,4 @@ Exec_HaltCatchFire:
     jmp 1b
 
     .cfi_endproc
-.size Exec_HaltCatchFire, . - Exec_HaltCatchFire
+.size Ex_HaltCatchFire, . - Ex_HaltCatchFire
