@@ -15,9 +15,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install LLVM 19
+      - name: Fetch Custom Toolchain
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          wget -qO- https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
+          if [ -f "llvm-yerp-toolchain.tar.gz" ]; then
+            echo "Skipping download."
+          else
+            if ! command -v gh &> /dev/null; then
+              curl -sL https://github.com/cli/cli/releases/download/v2.46.0/gh_2.46.0_linux_amd64.tar.gz | tar -xz -C /tmp
+              cp /tmp/gh_*/bin/gh /usr/local/bin/
+            fi
+
+            gh release download v1.0.0 \
+              --repo ${{ github.repository }} \
+              --pattern 'llvm-yerp-toolchain.tar.gz'
+          fi
+
+          mkdir -p build/toolchain/install
+          tar -xzf llvm-yerp-toolchain.tar.gz -C build/toolchain/install
 
       - name: Install dependencies
         run: |
@@ -29,7 +45,7 @@ jobs:
             curl git make
 
       - name: Build HDD image
-        run: make hdd MODE=${{ matrix.mode }} ARCH=x86_64 CC=clang-19 LD=ld.lld-19 AR=llvm-ar-19 EXTRA_CFLAGS="-DCI_BUILD"
+        run: make hdd MODE=${{ matrix.mode }} ARCH=x86_64 EXTRA_CFLAGS="-DCI_BUILD"
 
       - name: Smoke test
         timeout-minutes: 3
