@@ -7,9 +7,9 @@ typedef struct
     u32 Ebx;
     u32 Ecx;
     u32 Edx;
-} Arch_CpuidRegs;
+} X86_64_CpuidRegs;
 
-void X86_64_CpuidQuery(u32 leaf, u32 subleaf, Arch_CpuidRegs *out);
+void X86_64_CpuidQuery(u32 leaf, u32 subleaf, X86_64_CpuidRegs *out);
 u32  X86_64_CpuidMaxLeaf(void);
 u32  X86_64_CpuidMaxExtLeaf(void);
 

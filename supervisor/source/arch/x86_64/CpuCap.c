@@ -18,7 +18,7 @@ static void s_MapBit(u32 reg, u32 bit, Arch_CpuCap cap)
         s_SetCap(cap);
 }
 
-static void s_DetectVendor(const Arch_CpuidRegs *leaf0)
+static void s_DetectVendor(const X86_64_CpuidRegs *leaf0)
 {
     if (leaf0->Ebx == 0x756E6547 && leaf0->Edx == 0x49656E69 && leaf0->Ecx == 0x6C65746E)
         s_Vendor = kCpuVendor_Intel;
@@ -39,7 +39,7 @@ static void s_DetectBrand(u32 maxExt)
     u32 *dst = (u32 *)s_Brand;
     for (u32 leaf = 0x80000002; leaf <= 0x80000004; leaf++)
     {
-        Arch_CpuidRegs r;
+        X86_64_CpuidRegs r;
         X86_64_CpuidQuery(leaf, 0, &r);
         *dst++ = r.Eax;
         *dst++ = r.Ebx;
@@ -55,7 +55,7 @@ static void s_DetectStdFeatures(u32 maxLeaf)
     if (maxLeaf < 1)
         return;
 
-    Arch_CpuidRegs r;
+    X86_64_CpuidRegs r;
     X86_64_CpuidQuery(1, 0, &r);
 
     s_MapBit(r.Ecx, 0, CPUCAP_SSE3);
@@ -87,7 +87,7 @@ static void s_DetectExtFeatures(u32 maxLeaf)
     if (maxLeaf < 7)
         return;
 
-    Arch_CpuidRegs r;
+    X86_64_CpuidRegs r;
     X86_64_CpuidQuery(7, 0, &r);
 
     s_MapBit(r.Ebx, 3, CPUCAP_BMI1);
@@ -112,7 +112,7 @@ static void s_DetectExtendedLeaves(u32 maxExt)
     if (maxExt < 0x80000001)
         return;
 
-    Arch_CpuidRegs r;
+    X86_64_CpuidRegs r;
     X86_64_CpuidQuery(0x80000001, 0, &r);
 
     s_MapBit(r.Edx, 20, CPUCAP_NX);
@@ -130,7 +130,7 @@ static void s_DetectExtendedLeaves(u32 maxExt)
 
 void Arch_CpuCapInit(void)
 {
-    Arch_CpuidRegs leaf0;
+    X86_64_CpuidRegs leaf0;
     X86_64_CpuidQuery(0, 0, &leaf0);
     u32 maxLeaf = leaf0.Eax;
 

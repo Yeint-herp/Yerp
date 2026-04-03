@@ -11,7 +11,7 @@ static X86_64_TscInfo s_TscInfo;
 
 static bool s_DetectTscAvailable(void)
 {
-    Arch_CpuidRegs regs;
+    X86_64_CpuidRegs regs;
     X86_64_CpuidQuery(1, 0, &regs);
     return (regs.Edx & (1u << 4)) != 0;
 }
@@ -21,7 +21,7 @@ static bool s_DetectInvariantTsc(void)
     if (X86_64_CpuidMaxExtLeaf() < 0x80000007)
         return false;
 
-    Arch_CpuidRegs regs;
+    X86_64_CpuidRegs regs;
     X86_64_CpuidQuery(0x80000007, 0, &regs);
     return (regs.Edx & (1u << 8)) != 0;
 }
@@ -31,7 +31,7 @@ static u64 s_CalibrateViaCpuid(void)
     if (X86_64_CpuidMaxLeaf() < 0x15)
         return 0;
 
-    Arch_CpuidRegs regs;
+    X86_64_CpuidRegs regs;
     X86_64_CpuidQuery(0x15, 0, &regs);
 
     const u32 denom     = regs.Eax;

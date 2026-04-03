@@ -151,7 +151,7 @@ void X86_64_ApicDiscover(void)
 
     s_ApicState.LapicBase = Acpi_MadtGetLocalApicAddress();
 
-    Arch_CpuidRegs regs;
+    X86_64_CpuidRegs regs;
     X86_64_CpuidQuery(1, 0, &regs);
     s_ApicState.x2apic = (regs.Ecx >> 21) & 1;
 

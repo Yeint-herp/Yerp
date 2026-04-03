@@ -237,7 +237,7 @@ u32 X86_64_LocalApicTimerGetRate(void)
 
 bool X86_64_LocalApicTimerHasTscDeadline(void)
 {
-    Arch_CpuidRegs regs;
+    X86_64_CpuidRegs regs;
     X86_64_CpuidQuery(1, 0, &regs);
     return (regs.Ecx & (1u << 24)) != 0;
 }
