@@ -12,7 +12,6 @@ Supervisor_SystemStartup:
     .cfi_undefined rip
 
     call Ex_InitializeEarly
-    call Core_StackGuardInit
 
     .cfi_endproc
 .size Supervisor_SystemStartup, . - Supervisor_SystemStartup

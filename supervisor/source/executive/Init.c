@@ -23,6 +23,9 @@
 #include <mm/PfnDb.h>
 #include <mm/Vas.h>
 
+void Core_StackGuardInit(void);
+
+[[gnu::no_stack_protector]]
 void Ex_InitializeEarly()
 {
     Dbg_RegisterSinker(g_RingBufSinker);
@@ -47,6 +50,8 @@ void Ex_InitializeEarly()
     if (!LIMINE_BASE_REVISION_SUPPORTED(Boot_LimineBaseRevision) || !Boot_LimineMemmapReq.response ||
         !Boot_LimineHhdmReq.response)
         Panic("critical bootloader requests not fulfilled");
+
+    Core_StackGuardInit();
 
     Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
     Arch_MmInit();
