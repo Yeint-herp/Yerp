@@ -3,10 +3,11 @@
 
 #include <arch/Atomic.h>
 #include <arch/Spcr.h>
-#include <executive/Timer.h>
 #include <core/Spinlock.h>
+#include <dispatcher/Scheduler.h>
 #include <dsa/RingBuffer.h>
 #include <executive/Dpc.h>
+#include <executive/Timer.h>
 #include <mm/Magazine.h>
 
 #define DPC_QUEUE_DEPTH 256
@@ -25,9 +26,10 @@ struct Core_SPCB
     struct Mm_PfaMagazine ZeroPages;
 
     Core_Spinlock DpcQueueLock;
-    ringbuf_of(Dpc*, DPC_QUEUE_DEPTH) DpcQueue;
+    ringbuf_of(Dpc *, DPC_QUEUE_DEPTH) DpcQueue;
 
-    Ex_TimerCpu Timers;
+    Ex_TimerCpu     Timers;
+    Ds_SchedulerCpu Scheduler;
 
     struct Arch_SPCR ArchData;
     ArchId_t         ArchId;

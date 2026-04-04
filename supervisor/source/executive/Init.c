@@ -1,3 +1,5 @@
+#include <const.h>
+#include <dispatcher/Vm.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -24,6 +26,14 @@
 #include <mm/Vas.h>
 
 void Core_StackGuardInit(void);
+
+void Ex_InitializeLate(void *param)
+{
+    (void)param;
+    Log(INFO, "reached late initialization!");
+
+    Ds_ThreadExit(0);
+}
 
 [[gnu::no_stack_protector]]
 void Ex_InitializeEarly()
@@ -80,6 +90,18 @@ void Ex_InitializeEarly()
     Ex_TimerSystemInit();
 
     Log(INFO, "early initialization done");
+
+    Ds_SystemInit();
+    Ds_SchedulerSystemInit();
+
+    Ds_Thread *initThread = nullptr;
+    Ds_CreateThread(Ds_GetSystemVm(), Ex_InitializeLate, nullptr, DS_PRIORITY_NORMAL, &initThread);
+    Ds_ReadyThread(initThread);
+
+    Core_SpcbReleaseAps();
+
+    Ds_EnterDispatcher();
+    unreachable();
 }
 
 void Ex_DefaultInterruptHandler(Arch_RegisterFrame *frame)

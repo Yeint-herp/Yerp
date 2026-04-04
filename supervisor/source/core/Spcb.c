@@ -1,3 +1,5 @@
+#include <const.h>
+#include <dispatcher/Scheduler.h>
 #define DBG_MODULE "Spcb"
 
 #include <mm/Vas.h>
@@ -133,8 +135,9 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
     while (!Arch_AtomicLoad32(&s_ApRelease))
         Arch_CpuSleep();
 
-    // TODO release into the scheduler.
-    Ex_HaltCatchFire();
+    Ds_SchedulerInitAp();
+    Ds_EnterDispatcher();
+    unreachable();
 }
 
 void Core_SpcbBootAll(struct limine_mp_response *mpResponse)
