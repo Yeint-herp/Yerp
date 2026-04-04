@@ -1,5 +1,3 @@
-#include <const.h>
-#include <dispatcher/Vm.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -15,6 +13,7 @@
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
+#include <dispatcher/Vm.h>
 #include <executive/Dpc.h>
 #include <executive/Init.h>
 #include <executive/Object.h>
@@ -24,6 +23,7 @@
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
 #include <mm/Vas.h>
+#include <mm/ZeroPage.h>
 
 void Core_StackGuardInit(void);
 
@@ -31,6 +31,8 @@ void Ex_InitializeLate(void *param)
 {
     (void)param;
     Log(INFO, "reached late initialization!");
+
+    Mm_ZeroPageInit();
 
     Ds_ThreadExit(0);
 }

@@ -12,6 +12,7 @@
 #include <mm/Magazine.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
+#include <mm/ZeroPage.h>
 
 static Mm_Pfn *s_PfnDatabase        = nullptr;
 static uptr    s_HighestPhysicalPfn = 0;
@@ -452,8 +453,8 @@ uptr Mm_AllocatePages(u32 flags, uptr count)
 
     bool needZero = (flags & MM_ALLOC_ZEROED) != 0;
 
-    Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
-    struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
+    Irql_t            oldIrql = Irql_Raise(IRQL_DISPATCH);
+    struct Core_SPCB *spcb    = Arch_GetCurrentSpcb();
 
     struct Mm_PfaMagazine *preferred, *fallback;
     if (needZero)
@@ -578,8 +579,8 @@ void Mm_FreePages(uptr pfn, uptr count)
         entry->e1.MagazineCached = 1;
         Core_SpinlockRelease(&entry->Lock);
 
-        Irql_t oldIrql = Irql_Raise(IRQL_DISPATCH);
-        struct Core_SPCB *spcb = Arch_GetCurrentSpcb();
+        Irql_t            oldIrql = Irql_Raise(IRQL_DISPATCH);
+        struct Core_SPCB *spcb    = Arch_GetCurrentSpcb();
 
         if (s_MagazinePush(&spcb->FreePages, p))
         {
@@ -591,6 +592,8 @@ void Mm_FreePages(uptr pfn, uptr count)
 
         bool pushed = s_MagazinePush(&spcb->FreePages, p);
         ASSERT(pushed);
+
+        Mm_ZeroPageNotify();
 
         Irql_Lower(oldIrql);
     }
