@@ -325,8 +325,6 @@ void Interrupt_SendIpi(Ipi_Target target, u32 processorNumber, Interrupt_Handle 
         X86_64_LocalApicWriteReg(LAPIC_REG_ICR_HI, destApicId << 24);
         X86_64_LocalApicWriteReg(LAPIC_REG_ICR_LO, icrLo);
     }
-
-    Log(TRACE, "IPI: target = %u proc = %u vector = %u dest_apic = %u", target, processorNumber, vector, destApicId);
 }
 
 static void s_DisablePic8259(void)
