@@ -32,8 +32,8 @@ static void s_IpiHandler(Arch_RegisterFrame *frame, void *context)
     (void)frame;
     (void)context;
 
-    s_Drain();
     Interrupt_SendEoi(s_DpcIpiHandle);
+    s_Drain();
 }
 
 static bool s_Enqueue(struct Core_SPCB *target, Dpc *dpc, bool isSelf)
