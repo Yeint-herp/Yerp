@@ -32,3 +32,8 @@ bool Arch_IrqEnabled(void)
 
     return (flags & (1 << 9)) != 0;
 }
+
+void Arch_IrqEnable(void)
+{
+    __asm__ volatile("sti" ::: "memory");
+}
