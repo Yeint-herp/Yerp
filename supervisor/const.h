@@ -20,7 +20,8 @@ typedef isize iptr;
 typedef uptr paddr_t;
 typedef uptr vaddr_t;
 
-#define U64_MAX ((u64)-1)
+#define U64_MAX ((u64) - 1)
+#define U32_MAX ((u32) - 1)
 
 #define unreachable()  __builtin_unreachable()
 #define ArraySize(arr) sizeof(arr) / sizeof(*arr)
