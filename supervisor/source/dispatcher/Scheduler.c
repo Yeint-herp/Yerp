@@ -176,18 +176,23 @@ void Ds_SchedulerInitAp()
     Dsa_ListInit(&idle->SchedLink);
     Dsa_ListInit(&idle->VmThreadLink);
 
-    idle->Vm              = Ds_GetSystemVm();
-    idle->State           = kDsThreadInitialized;
-    idle->BasePriority    = DS_PRIORITY_IDLE;
-    idle->CurrentPriority = DS_PRIORITY_IDLE;
-    idle->QuantumReset    = DS_QUANTUM_DEFAULT;
-    idle->Quantum         = DS_QUANTUM_DEFAULT;
-    idle->Flags           = PS_THREAD_SYSTEM | PS_THREAD_IDLE;
-    idle->StackBase       = (uptr)Ex_Allocate(PS_THREAD_STACK_SIZE, PS_TAG_STACK);
-    idle->StackSize       = PS_THREAD_STACK_SIZE;
-    idle->IdealProcessor  = Arch_GetCurrentSpcb()->ProcessorNumber;
-    idle->Processor       = Arch_GetCurrentSpcb()->ProcessorNumber;
-    idle->WaitTimerActive = false;
+    Dsa_ListInit(&idle->ApcQueueHead);
+    Dsa_ListInit(&idle->ApcMaskableHead);
+
+    idle->ApcMaskableDisable = false;
+    idle->ApcPending         = false;
+    idle->Vm                 = Ds_GetSystemVm();
+    idle->State              = kDsThreadInitialized;
+    idle->BasePriority       = DS_PRIORITY_IDLE;
+    idle->CurrentPriority    = DS_PRIORITY_IDLE;
+    idle->QuantumReset       = DS_QUANTUM_DEFAULT;
+    idle->Quantum            = DS_QUANTUM_DEFAULT;
+    idle->Flags              = PS_THREAD_SYSTEM | PS_THREAD_IDLE;
+    idle->StackBase          = (uptr)Ex_Allocate(PS_THREAD_STACK_SIZE, PS_TAG_STACK);
+    idle->StackSize          = PS_THREAD_STACK_SIZE;
+    idle->IdealProcessor     = Arch_GetCurrentSpcb()->ProcessorNumber;
+    idle->Processor          = Arch_GetCurrentSpcb()->ProcessorNumber;
+    idle->WaitTimerActive    = false;
 
     uptr idleStackTop = idle->StackBase + PS_THREAD_STACK_SIZE;
     Arch_ContextInit(&idle->Context, idleStackTop, Ds_IdleLoop, nullptr);
@@ -317,6 +322,8 @@ void Ds_CheckPreemption(Ds_SchedulerCpu *cpu)
 void Ds_ThreadStartup(void *param)
 {
     Core_SpinlockReleaseIrql(&g_DispatcherLock, IRQL_PASSIVE);
+
+    Ds_ApcDrainCurrent();
 
     Ds_Thread *self = param;
     self->EntryPoint(self->EntryParameter);

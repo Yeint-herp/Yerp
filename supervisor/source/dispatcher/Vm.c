@@ -135,6 +135,9 @@ i32 Ds_CreateThread(Ds_Vm *process, Arch_ThreadEntry entry, void *param, u32 pri
     Dsa_ListInit(&th->SchedLink);
     Dsa_ListInit(&th->VmThreadLink);
 
+    Dsa_ListInit(&th->ApcQueueHead);
+    Dsa_ListInit(&th->ApcMaskableHead);
+
     th->StackBase = (uptr)Ex_Allocate(PS_THREAD_STACK_SIZE, PS_TAG_STACK);
     if (!th->StackBase)
     {
@@ -150,18 +153,20 @@ i32 Ds_CreateThread(Ds_Vm *process, Arch_ThreadEntry entry, void *param, u32 pri
 
     Arch_ContextInit(&th->Context, stackTop, Ds_ThreadStartup, th);
 
-    th->Vm              = process;
-    th->State           = kDsThreadInitialized;
-    th->BasePriority    = priority;
-    th->CurrentPriority = priority;
-    th->QuantumReset    = DS_QUANTUM_DEFAULT;
-    th->Quantum         = th->QuantumReset;
-    th->Flags           = 0;
-    th->ExitCode        = 0;
-    th->WaitTimerActive = false;
-    th->ThreadId        = Arch_AtomicAdd32(&s_NextThreadId, 1);
-    th->IdealProcessor  = 0;
-    th->Processor       = 0;
+    th->ApcMaskableDisable = false;
+    th->ApcPending         = false;
+    th->Vm                 = process;
+    th->State              = kDsThreadInitialized;
+    th->BasePriority       = priority;
+    th->CurrentPriority    = priority;
+    th->QuantumReset       = DS_QUANTUM_DEFAULT;
+    th->Quantum            = th->QuantumReset;
+    th->Flags              = 0;
+    th->ExitCode           = 0;
+    th->WaitTimerActive    = false;
+    th->ThreadId           = Arch_AtomicAdd32(&s_NextThreadId, 1);
+    th->IdealProcessor     = 0;
+    th->Processor          = 0;
 
     Arch_IrqFlags irq = Core_SpinlockAcquireIrq(&process->ThreadListLock);
     Dsa_ListInsertTail(&process->ThreadListHead, &th->VmThreadLink);

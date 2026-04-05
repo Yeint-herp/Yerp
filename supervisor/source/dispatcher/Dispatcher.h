@@ -13,6 +13,7 @@ enum
     kDsObjectThread,
     kDsObjectVm,
     kDsObjectTimer,
+    kDsWaitKernelApc,
 };
 
 enum
@@ -58,6 +59,18 @@ typedef struct Ds_Mutex
     u32                 RecursionCount;
 } Ds_Mutex;
 
+typedef void (*Ds_ApcRoutine)(void *context, void *arg1, void *arg2);
+
+typedef struct Ds_Apc
+{
+    Dsa_ListEntry QueueEntry;
+    Ds_ApcRoutine Routine;
+    void         *Context;
+    void         *Arg1;
+    void         *Arg2;
+    bool          Maskable;
+} Ds_Apc;
+
 void Ds_EventInit(Ds_Event *event, u32 type, bool initialState);
 void Ds_EventSet(Ds_Event *event);
 void Ds_EventReset(Ds_Event *event);
@@ -68,6 +81,10 @@ i32  Ds_SemaphoreRelease(Ds_Semaphore *sem, i32 count);
 
 void Ds_MutexInit(Ds_Mutex *mtx);
 void Ds_MutexRelease(Ds_Mutex *mtx);
+
+void Ds_ApcInit(Ds_Apc *apc, Ds_ApcRoutine routine, void *context, bool maskable);
+void Ds_ApcQueue(Ds_Apc *apc, struct Ds_Thread *thread, void *arg1, void *arg2);
+void Ds_ApcDrainCurrent(void);
 
 i32 Ds_WaitForObject(Ds_DispatcherHeader *object, u64 timeoutTicks);
 

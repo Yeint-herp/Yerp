@@ -54,6 +54,11 @@ typedef struct Ds_Thread
     Dpc          WaitTimerDpc;
     bool         WaitTimerActive;
 
+    Dsa_ListEntry ApcQueueHead;
+    Dsa_ListEntry ApcMaskableHead;
+    bool          ApcMaskableDisable; 
+    bool          ApcPending;
+
     uptr StackBase;
     uptr StackSize;
 

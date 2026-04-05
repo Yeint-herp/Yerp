@@ -176,6 +176,14 @@ i32 Ds_WaitForObject(Ds_DispatcherHeader *object, u64 timeoutTicks)
 
     Arch_ContextSwitch(&self->Context, next->Context);
 
+    if (self->WaitStatus == kDsWaitKernelApc)
+    {
+        Core_SpinlockReleaseIrql(&g_DispatcherLock, old);
+        Ds_ApcDrainCurrent();
+
+        return kDsWaitKernelApc;
+    }
+
     i32 status = self->WaitStatus;
     Core_SpinlockReleaseIrql(&g_DispatcherLock, old);
     return status;
