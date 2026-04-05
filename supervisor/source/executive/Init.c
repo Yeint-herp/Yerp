@@ -1,3 +1,4 @@
+#include <executive/Cfm.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -80,8 +81,9 @@ void Ex_InitializeEarly()
 
     Ex_PoolInit();
     Mm_SupervisorVasInit();
-    
+
     Ob_Init();
+    Cf_Init();
 
     Acpi_EarlyInit();
     Interrupt_ControllerInit();
