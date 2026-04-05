@@ -20,4 +20,7 @@ const char *Core_FindSubstring(const char *haystack, const char *needle);
 
 char *Core_DuplicateString(const char *str, u32 tag);
 
+char *Core_UnsignedToString(char *dst, u64 value, u32 base);
+char *Core_IntegerToString(char *dst, i64 value, u32 base);
+
 #endif /* SUPERVISOR_CORE_MEMORY_H */

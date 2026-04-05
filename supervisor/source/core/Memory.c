@@ -231,3 +231,59 @@ char *Core_DuplicateString(const char *str, u32 tag)
 
     return dup;
 }
+
+char *Core_UnsignedToString(char *dst, u64 value, u32 base)
+{
+    if (base < 2 || base > 36)
+    {
+        *dst = '\0';
+        return dst;
+    }
+
+    char *ptr = dst;
+
+    if (value == 0)
+    {
+        *ptr++ = '0';
+        *ptr   = '\0';
+
+        return dst;
+    }
+
+    while (value > 0)
+    {
+        u64 rem = value % base;
+        *ptr++  = (rem > 9) ? (rem - 10) + 'a' : rem + '0';
+        value /= base;
+    }
+
+    *ptr = '\0';
+
+    char *start = dst;
+    char *end   = ptr - 1;
+    while (start < end)
+    {
+        char temp = *start;
+        *start++  = *end;
+        *end--    = temp;
+    }
+
+    return dst;
+}
+
+char *Core_IntegerToString(char *dst, i64 value, u32 base)
+{
+    char *ptr = dst;
+
+    if (base == 10 && value < 0)
+    {
+        *ptr++ = '-';
+
+        u64 absValue = -(value + 1) + 1;
+
+        Core_UnsignedToString(ptr, absValue, base);
+        return dst;
+    }
+
+    return Core_UnsignedToString(dst, value, base);
+}

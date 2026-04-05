@@ -1,4 +1,3 @@
-#include <executive/Cfm.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -15,6 +14,8 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <dispatcher/Vm.h>
+#include <executive/Cfm.h>
+#include <executive/CfmPopulate.h>
 #include <executive/Dpc.h>
 #include <executive/Init.h>
 #include <executive/Object.h>
@@ -34,6 +35,8 @@ void Ex_InitializeLate(void *param)
     Log(INFO, "reached late initialization!");
 
     Mm_ZeroPageInit();
+
+    Cf_PopulateHardware(&Ds_GetSystemVm()->HandleTable, Ds_GetSystemVm()->Token);
 
     Ds_ThreadExit(0);
 }
