@@ -81,6 +81,4 @@ void Mm_ZeroPageInit(void)
 
     scrubber->IdealProcessor = Arch_GetCurrentSpcb()->ProcessorNumber;
     Ds_ReadyThread(scrubber);
-
-    Log(INFO, "started zero-page scrubber");
 }

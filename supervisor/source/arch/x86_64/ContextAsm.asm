@@ -36,7 +36,7 @@ Arch_ContextSwitch:
     .cfi_offset r15, -64
 
     mov [rdi], rsp
-    mov rsp, rsi 
+    mov rsp, rsi
 
     pop r15
     .cfi_def_cfa_offset 56
