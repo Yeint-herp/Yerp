@@ -80,15 +80,15 @@ void Ex_InitializeEarly()
 
     Ex_PoolInit();
     Mm_SupervisorVasInit();
+    
+    Ob_Init();
 
     Acpi_EarlyInit();
     Interrupt_ControllerInit();
 
     Core_SpcbBootAll(Boot_LimineSmpReq.response);
 
-    Ob_Init();
     Dpc_SystemInit();
-
     Ex_TimerSystemInit();
 
     Log(INFO, "early initialization done");
