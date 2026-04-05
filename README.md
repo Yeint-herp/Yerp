@@ -57,6 +57,6 @@ To build and run Yerp, you will need:
 * [X] **Deffered Procedure Calls (DPCs):** Support for dispatching DPCs when lowering IRQL to passive.
 * [X] **Per-core Timer Wheel:** Support for registering, cohering and acting upon timers.
 * [ ] **LAPIC Timer Calibration:** Timer calibration using PIT / PM Timer fallbacks.
-* [ ] **Dispatcher:** Preemptive multi-threading and priority levels.
+* [X] **Dispatcher:** Preemptive multi-threading and priority levels.
 * [ ] **VFS:** Virtual File System layer for storage abstraction.
 * [ ] **User Mode:** Ring 3 transition and System Call interface.
