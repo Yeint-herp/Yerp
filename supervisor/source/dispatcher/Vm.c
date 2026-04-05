@@ -6,6 +6,8 @@
 #include <core/Spcb.h>
 #include <dispatcher/Scheduler.h>
 #include <dispatcher/Vm.h>
+#include <executive/Acl.h>
+#include <executive/Object.h>
 
 static Ob_Type *s_VmType;
 static Ob_Type *s_ThreadType;
@@ -59,11 +61,22 @@ void Ds_SystemInit(void)
     Arch_AtomicStore32(&s_NextVmId, 1);
     Arch_AtomicStore32(&s_NextThreadId, 1);
 
-    Ds_CreateVm(nullptr, &s_SystemVm);
+    Acl_Token *supervisorToken = nullptr;
+    Acl_Sid    supervisorGroup = ACL_SID_SUPERVISOR;
+    u32 allPrivileges = ACL_PRIV_BYPASS_ACL | ACL_PRIV_CREATE_TOKEN | ACL_PRIV_DEBUG_PROCESS | ACL_PRIV_TAKE_OWNER;
+
+    Acl_CreateToken(ACL_SID_SUPERVISOR, &supervisorGroup, 1, allPrivileges, &supervisorToken);
+
+    Ds_CreateVm(supervisorToken, &s_SystemVm);
     s_SystemVm->VmId = 0;
 
     Ob_CreateDirectory("\\Supervisor", nullptr);
     Ob_InsertObjectByPath("\\Supervisor\\System", s_SystemVm);
+
+    Acl_Acl *systemAcl = Acl_CreateSimple(ACL_SID_SUPERVISOR, 0xffffffff, 0);
+    Ob_SetObjectSecurity(s_SystemVm, ACL_SID_SUPERVISOR, systemAcl);
+
+    Acl_DereferenceToken(supervisorToken);
 }
 
 i32 Ds_CreateVm(Acl_Token *token, Ds_Vm **outVm)
@@ -147,8 +160,8 @@ i32 Ds_CreateThread(Ds_Vm *process, Arch_ThreadEntry entry, void *param, u32 pri
     th->ExitCode        = 0;
     th->WaitTimerActive = false;
     th->ThreadId        = Arch_AtomicAdd32(&s_NextThreadId, 1);
-    th->Vmor            = 0;
-    th->IdealVmor       = 0;
+    th->IdealProcessor  = 0;
+    th->Processor       = 0;
 
     Arch_IrqFlags irq = Core_SpinlockAcquireIrq(&process->ThreadListLock);
     Dsa_ListInsertTail(&process->ThreadListHead, &th->VmThreadLink);
@@ -198,13 +211,11 @@ void Ds_ThreadExit(u32 exitCode)
 
     Ob_DereferenceObject(self);
 
-    Ds_Thread *next = Ds_SelectNextThread(cpu);
-    if (next == nullptr)
-        next = cpu->IdleThread;
+    Ds_Thread *next = Ds_PickNextThread(cpu);
 
     next->State        = kDsThreadRunning;
     cpu->CurrentThread = next;
-    next->Vmor         = cpu->ProcessorNumber;
+    next->Processor    = cpu->ProcessorNumber;
 
     Arch_ContextSwitch(&self->Context, next->Context);
 

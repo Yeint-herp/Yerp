@@ -168,13 +168,11 @@ i32 Ds_WaitForObject(Ds_DispatcherHeader *object, u64 timeoutTicks)
     else
         self->WaitTimerActive = false;
 
-    Ds_Thread *next = Ds_SelectNextThread(cpu);
-    if (next == nullptr)
-        next = cpu->IdleThread;
+    Ds_Thread *next = Ds_PickNextThread(cpu);
 
-    next->State          = kDsThreadRunning;
-    cpu->CurrentThread   = next;
-    next->IdealProcessor = cpu->ProcessorNumber;
+    next->State        = kDsThreadRunning;
+    cpu->CurrentThread = next;
+    next->Processor    = cpu->ProcessorNumber;
 
     Arch_ContextSwitch(&self->Context, next->Context);
 

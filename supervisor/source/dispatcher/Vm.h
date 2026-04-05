@@ -46,15 +46,13 @@ typedef struct Ds_Thread
     u32 Quantum;
     u32 QuantumReset;
     u32 IdealProcessor;
+    u32 Processor;
 
     Ds_WaitBlock WaitBlock;
     i32          WaitStatus;
     Ex_Timer     WaitTimer;
     Dpc          WaitTimerDpc;
     bool         WaitTimerActive;
-
-    u32 Vmor;
-    u32 IdealVmor;
 
     uptr StackBase;
     uptr StackSize;

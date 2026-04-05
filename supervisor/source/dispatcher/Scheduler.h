@@ -31,6 +31,7 @@ typedef struct Ds_SchedulerCpu
     u32           ReadyBitmap;
 
     u32 ProcessorNumber;
+    u32 ReadyCount;
 } Ds_SchedulerCpu;
 
 void Ds_SchedulerSystemInit(void);
@@ -39,11 +40,13 @@ void Ds_SchedulerInitAp();
 void       Ds_InsertReady(Ds_Thread *thread);
 Ds_Thread *Ds_SelectNextThread(Ds_SchedulerCpu *cpu);
 
-void Ds_Reschedule(void);
-void Ds_CheckPreemption(Ds_SchedulerCpu *cpu);
+void       Ds_Reschedule(void);
+void       Ds_CheckPreemption(Ds_SchedulerCpu *cpu);
+Ds_Thread *Ds_PickNextThread(Ds_SchedulerCpu *cpu);
 
 [[noreturn]] void Ds_EnterDispatcher(void);
 
+void Ds_IdleLoop(void *param);
 void Ds_ThreadStartup(void *param);
 
 #endif /* SUPERVISOR_DISPATCHER_SCHEDULER_H */
