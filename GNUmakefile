@@ -23,6 +23,13 @@ LIB_BUILD_DIR := $(BUILD_DIR)/lib
 ISO_DIR := $(BUILD_DIR)/iso_root
 HDD_DIR := $(BUILD_DIR)/hdd_root
 TC_INST := $(abspath build/toolchain/install)
+DRIVER_DIR := $(abspath driver)
+DRIVER_BUILD_DIR := $(BUILD_DIR)/driver
+
+LIMINE_CONF_IN := limine.conf.in
+LIMINE_CONF_GEN := $(BUILD_DIR)/limine.conf
+
+DRIVER_ELFS = $(wildcard $(DRIVER_BUILD_DIR)/*/bin/*)
 
 HDD_IMG := $(BUILD_DIR)/$(OS_NAME).hdd
 ISO_IMG := $(BUILD_DIR)/$(OS_NAME).iso
@@ -60,7 +67,7 @@ QEMUFLAGS := -M q35 -m 2G -cpu max,+x2apic -smp 4 -display sdl \
 			 -debugcon mon:stdio -no-reboot -no-shutdown \
 			 -d int -D $(BUILD_ROOT)/qemu_log.txt
 
-.PHONY: all clean distclean run-hdd run-iso hdd iso libs supervisor deps toolchain toolchain-snapshot
+.PHONY: all clean distclean run-hdd run-iso hdd iso libs drivers supervisor deps toolchain toolchain-snapshot
 
 all: run-hdd
 
@@ -73,31 +80,60 @@ supervisor: libs
 	@$(MAKE) -C supervisor MODE=$(MODE) ARCH=$(ARCH) BUILD_DIR=$(abspath $(BUILD_DIR)/supervisor) TOOLS_DIR=$(TOOLS_DIR) \
 		LIB_DIR=$(LIB_DIR) LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) TC_INST=$(TC_INST)
 
+drivers: libs
+	@$(MAKE) -C driver MODE=$(MODE) ARCH=$(ARCH) \
+		BUILD_DIR=$(abspath $(DRIVER_BUILD_DIR)) \
+		TC_INST=$(TC_INST) \
+		LIB_DIR=$(LIB_DIR) \
+		LIB_BUILD_DIR=$(abspath $(LIB_BUILD_DIR)) \
+		SUPERVISOR_DIR=$(abspath supervisor)
+
 toolchain:
 	@$(MAKE) -C toolchain
 
 toolchain-snapshot:
 	@$(MAKE) -C toolchain snapshot
 
-hdd: supervisor deps
+$(LIMINE_CONF_GEN): $(LIMINE_CONF_IN) drivers
+	@echo "[CONF] limine.conf"
+	@cp $(LIMINE_CONF_IN) $@
+	@for elf in $(DRIVER_BUILD_DIR)/*/bin/*; do \
+		[ -f "$$elf" ] || continue; \
+		name=$$(basename "$$elf"); \
+		echo "    module_path=boot():/System/Drivers/$$name" >> $@; \
+		echo "    module_string=$$name" >> $@; \
+	done
+
+hdd: supervisor drivers $(LIMINE_CONF_GEN) deps
 	@mkdir -p $(BUILD_DIR)
 	@rm -f $(HDD_IMG)
 	@$(DD) if=/dev/zero bs=1M count=64 of=$(HDD_IMG) status=none
 	@$(SGDISK) $(HDD_IMG) -n 1:2048 -t 1:ef00 -c 1:"EFI System" > /dev/null
 	@$(MFORMAT) -i $(HDD_IMG)@@1M
-	@$(MMD) -i $(HDD_IMG)@@1M ::/EFI ::/EFI/BOOT ::/boot
+	@$(MMD) -i $(HDD_IMG)@@1M ::/EFI ::/EFI/BOOT ::/boot ::/System ::/System/Drivers
 	@$(MCOPY) -i $(HDD_IMG)@@1M $(SUPERVISOR_ELF) ::/boot/supervisor
-	@$(MCOPY) -i $(HDD_IMG)@@1M limine.conf ::/boot/limine.conf
+	@$(MCOPY) -i $(HDD_IMG)@@1M $(LIMINE_CONF_GEN) ::/boot/limine.conf
 	@$(MCOPY) -i $(HDD_IMG)@@1M $(LIMINE_DIR)/BOOTX64.EFI ::/EFI/BOOT/BOOTX64.EFI
+
+	@for elf in $(DRIVER_BUILD_DIR)/*/bin/*; do \
+		[ -f "$$elf" ] || continue; \
+		$(MCOPY) -i $(HDD_IMG)@@1M "$$elf" ::/System/Drivers/$$(basename "$$elf"); \
+	done
+
 	@echo "[HDD] $(HDD_IMG) ($(MODE))"
 
-iso: supervisor deps
-	@mkdir -p $(ISO_DIR)/boot/limine $(ISO_DIR)/EFI/BOOT
+iso: supervisor drivers $(LIMINE_CONF_GEN) deps
+	@mkdir -p $(ISO_DIR)/boot/limine $(ISO_DIR)/EFI/BOOT $(ISO_DIR)/System/Drivers
 	@cp $(SUPERVISOR_ELF) $(ISO_DIR)/boot/supervisor
-	@cp limine.conf $(ISO_DIR)/boot/
+	@cp $(LIMINE_CONF_GEN) $(ISO_DIR)/boot/limine.conf
 	@cp $(LIMINE_DIR)/limine-bios.sys $(LIMINE_DIR)/limine-bios-cd.bin \
 		$(LIMINE_DIR)/limine-uefi-cd.bin $(ISO_DIR)/boot/limine/
 	@cp $(LIMINE_DIR)/BOOTX64.EFI $(ISO_DIR)/EFI/BOOT/
+
+	@for elf in $(DRIVER_BUILD_DIR)/*/bin/*; do \
+		[ -f "$$elf" ] || continue; \
+		cp "$$elf" $(ISO_DIR)/System/Drivers/; \
+	done
 
 	@$(XORRISO) -as mkisofs -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
