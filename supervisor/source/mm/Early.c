@@ -5,7 +5,6 @@
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
 #include <executive/Init.h>
-#include <limine.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
@@ -50,31 +49,6 @@ bool Mm_IsPfnReady(void)
     return s_PfnReady;
 }
 
-static Mm_RegionType s_TranslateLimineType(u64 limineType)
-{
-    switch (limineType)
-    {
-        case LIMINE_MEMMAP_USABLE:
-            return kMemTypeUsable;
-        case LIMINE_MEMMAP_RESERVED:
-            return kMemTypeReserved;
-        case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
-            return kMemTypeACPIReclaimable;
-        case LIMINE_MEMMAP_ACPI_NVS:
-            return kMemTypeACPINVS;
-        case LIMINE_MEMMAP_BAD_MEMORY:
-            return kMemTypeBadMemory;
-        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-            return kMemTypeBootloaderReclaimable;
-        case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES:
-            return kMemTypeSupervisorModules;
-        case LIMINE_MEMMAP_FRAMEBUFFER:
-            return kMemTypeFramebuffer;
-        default:
-            return kMemTypeReserved;
-    }
-}
-
 static bool s_InsertRegion(usize pos, u64 base, u64 length, Mm_RegionType type)
 {
     if (s_MemMap.Count >= s_MemMap.Capacity)
@@ -93,26 +67,27 @@ static bool s_InsertRegion(usize pos, u64 base, u64 length, Mm_RegionType type)
     return true;
 }
 
-void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
+void Mm_EarlyInit(Boot_MemMap *bootMap, u64 hhdmOffset)
 {
     s_HhdmOffset = hhdmOffset;
 
-    usize capacity  = mmResponse->entry_count + 32;
-    usize arraySize = capacity * sizeof(Mm_MemRegion);
+    usize entryCount = bootMap->Count;
+    usize capacity   = entryCount + 32;
+    usize arraySize  = capacity * sizeof(Mm_MemRegion);
 
     u64  arrayPhys  = 0;
     bool foundSpace = false;
 
-    for (usize i = mmResponse->entry_count; i > 0; i--)
+    for (usize i = entryCount; i > 0; i--)
     {
-        usize                       idx   = i - 1;
-        struct limine_memmap_entry *entry = mmResponse->entries[idx];
+        usize          idx   = i - 1;
+        Boot_MemEntry *entry = &bootMap->Entries[idx];
 
-        if (entry->type == LIMINE_MEMMAP_USABLE && entry->length >= arraySize)
+        if (entry->Type == kMemTypeUsable && entry->Length >= arraySize)
         {
-            arrayPhys  = entry->base + entry->length - arraySize;
+            arrayPhys  = entry->Base + entry->Length - arraySize;
             foundSpace = true;
-            entry->length -= arraySize;
+            entry->Length -= arraySize;
             break;
         }
     }
@@ -131,15 +106,15 @@ void Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset)
     s_MemMap.Regions[0].Type   = kMemTypeEarlyAllocated;
     s_MemMap.Count++;
 
-    for (usize i = 0; i < mmResponse->entry_count; i++)
+    for (usize i = 0; i < entryCount; i++)
     {
-        struct limine_memmap_entry *entry = mmResponse->entries[i];
-        if (entry->length == 0)
+        Boot_MemEntry *entry = &bootMap->Entries[i];
+        if (entry->Length == 0)
             continue;
 
-        s_MemMap.Regions[s_MemMap.Count].Base   = entry->base;
-        s_MemMap.Regions[s_MemMap.Count].Length = entry->length;
-        s_MemMap.Regions[s_MemMap.Count].Type   = s_TranslateLimineType(entry->type);
+        s_MemMap.Regions[s_MemMap.Count].Base   = entry->Base;
+        s_MemMap.Regions[s_MemMap.Count].Length = entry->Length;
+        s_MemMap.Regions[s_MemMap.Count].Type   = entry->Type;
         s_MemMap.Count++;
     }
 

@@ -2,11 +2,11 @@
 
 #include <acpi/osi/OsServices.h>
 #include <arch/Io.h>
-#include <boot/Limine.h>
+#include <boot/Loader.h>
 #include <core/VarArg.h>
 #include <debug/DbgPrint.h>
-#include <mm/Early.h>
 #include <executive/Pool.h>
+#include <mm/Early.h>
 #include <mm/Vas.h>
 
 #define EX_TAG_ACPI EX_TAG('A', 'c', 'p', 'i')
@@ -218,12 +218,5 @@ void Acpi_OsRemoveSciHandler(Acpi_Uint32 gsi, Acpi_SciHandler handler)
 
 Acpi_Paddr Acpi_OsGetRsdpAddress(void)
 {
-    struct limine_rsdp_response *resp = Boot_Limine_RsdpReq.response;
-    if (!resp || !resp->address)
-        return 0;
-
-    const uptr hhdmOffset = Mm_GetHhdmBase();
-    const uptr rsdpVirt   = (uptr)resp->address;
-
-    return (Acpi_Paddr)(rsdpVirt - hhdmOffset);
+    return Boot_GetRsdpPhys();
 }

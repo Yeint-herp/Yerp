@@ -1,11 +1,10 @@
 #ifndef SUPERVISOR_MM_EARLY_H
 #define SUPERVISOR_MM_EARLY_H
 
+#include <boot/Loader.h>
 #include <mm/MemMap.h>
 
-struct limine_memmap_response;
-
-void  Mm_EarlyInit(struct limine_memmap_response *mmResponse, u64 hhdmOffset);
+void  Mm_EarlyInit(Boot_MemMap *bootMap, u64 hhdmOffset);
 void *Mm_PermanentAllocate(usize size, usize alignment);
 
 void Mm_SetPfnReady(void);

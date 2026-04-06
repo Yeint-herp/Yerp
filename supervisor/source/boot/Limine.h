@@ -1,14 +1,18 @@
 #ifndef SUPERVISOR_BOOT_LIMINE_H
 #define SUPERVISOR_BOOT_LIMINE_H
 
+#include <boot/Loader.h>
 #include <limine.h>
 
 extern volatile u64 Boot_LimineBaseRevision[];
 
-extern volatile struct limine_memmap_request             Boot_LimineMemmapReq;
-extern volatile struct limine_hhdm_request               Boot_LimineHhdmReq;
-extern volatile struct limine_executable_address_request Boot_LimineExecAddrReq;
-extern volatile struct limine_mp_request                 Boot_LimineSmpReq;
-extern volatile struct limine_rsdp_request               Boot_Limine_RsdpReq;
+bool Boot_Limine_Probe(void);
+
+u64                 Boot_Limine_GetHhdmOffset(void);
+uptr                Boot_Limine_GetRsdpPhys(void);
+Boot_MemMap        *Boot_Limine_GetMemMap(void);
+const Boot_SmpInfo *Boot_Limine_GetSmpInfo(void);
+void                Boot_Limine_SetCpuExtra(u32 cpuIndex, uptr extra);
+void                Boot_Limine_LaunchAps(Boot_ApEntry entry);
 
 #endif /* SUPERVISOR_BOOT_LIMINE_H */

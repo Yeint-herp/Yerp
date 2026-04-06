@@ -37,18 +37,15 @@ struct Core_SPCB
     Arch_Atomic32 SlabTid;
 };
 
-struct limine_mp_response;
+/// Allocates the SPCB array. Returns true if multiprocessor.
+bool Core_SpcbAllocateAll(void);
 
-/// allocates the SPCB array for all detected cores during early boot.
-bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse);
+/// Boots all APs, waits for them to check in, then returns.
+void Core_SpcbBootAll(void);
 
-/// boots all APs, waits for them to init and check in, then returns.
-void Core_SpcbBootAll(struct limine_mp_response *mpResponse);
-
-/// releases parked APs into the dispatcher.
+/// Releases parked APs into the dispatcher.
 void Core_SpcbReleaseAps(void);
 
-/// called by each core to init it's SPCB.
 bool Core_SpcbInit(struct Core_SPCB *spcb);
 bool Core_SpcbLateInit(struct Core_SPCB *spcb);
 

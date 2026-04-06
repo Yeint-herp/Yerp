@@ -4,7 +4,6 @@
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <executive/Init.h>
-#include <limine.h>
 
 bool Arch_SpcrInit(struct Arch_SPCR *spcr)
 {
@@ -18,20 +17,4 @@ bool Arch_SpcrInit(struct Arch_SPCR *spcr)
     Log(TRACE, "SPCR[%i] early initialized", container_of(spcr, struct Core_SPCB, ArchData)->ProcessorNumber);
 
     return true;
-}
-
-ArchId_t Arch_GetBspArchId(const struct limine_mp_response *mpResponse)
-{
-    if (!mpResponse)
-        return 0;
-
-    return mpResponse->bsp_lapic_id;
-}
-
-ArchId_t Arch_GetArchId(const struct limine_mp_info *mpInfo)
-{
-    if (!mpInfo)
-        return 0;
-
-    return mpInfo->lapic_id;
 }

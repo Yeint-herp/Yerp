@@ -1,4 +1,3 @@
-#include <io/Io.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -10,7 +9,7 @@
 #include <arch/Rng.h>
 #include <arch/x86_64/RegisterFrame.h>
 #include <arch/x86_64/Spcr.h>
-#include <boot/Limine.h>
+#include <boot/Loader.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
@@ -22,6 +21,7 @@
 #include <executive/Object.h>
 #include <executive/Pool.h>
 #include <executive/Timer.h>
+#include <io/Io.h>
 #include <mm/Early.h>
 #include <mm/MemMap.h>
 #include <mm/PfnDb.h>
@@ -65,19 +65,18 @@ void Ex_InitializeEarly()
             : (rngSource == RNG_SRC_RDRAND) ? "hardware RndRand"
                                             : "hardware TSC");
 
-    if (!LIMINE_BASE_REVISION_SUPPORTED(Boot_LimineBaseRevision) || !Boot_LimineMemmapReq.response ||
-        !Boot_LimineHhdmReq.response)
-        Panic("critical bootloader requests not fulfilled");
+    if (!Boot_Init())
+        Panic("no supported bootloader detected");
 
     Core_StackGuardInit();
 
-    Mm_EarlyInit(Boot_LimineMemmapReq.response, Boot_LimineHhdmReq.response->offset);
+    Mm_EarlyInit(Boot_GetMemMap(), Boot_GetHhdmOffset());
     Arch_MmInit();
 
-    Log(INFO, "hhdm handed of at %#llx", Mm_GetHhdmBase());
+    Log(INFO, "hhdm handed off at %#llx", Mm_GetHhdmBase());
     Mm_DumpMemMap(Mm_GetSupervisorMemMap());
 
-    bool hasMultiprocessor = Core_SpcbAllocateAll(Boot_LimineSmpReq.response);
+    bool hasMultiprocessor = Core_SpcbAllocateAll();
     if (!hasMultiprocessor)
         Log(INFO, "multiprocessor capabilities not detected");
 
@@ -93,7 +92,7 @@ void Ex_InitializeEarly()
     Acpi_EarlyInit();
     Interrupt_ControllerInit();
 
-    Core_SpcbBootAll(Boot_LimineSmpReq.response);
+    Core_SpcbBootAll();
 
     Dpc_SystemInit();
     Ex_TimerSystemInit();

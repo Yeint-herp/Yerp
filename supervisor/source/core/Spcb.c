@@ -1,19 +1,19 @@
 #define DBG_MODULE "Spcb"
 
-#include <dispatcher/Scheduler.h>
-#include <mm/Vas.h>
-#include <executive/Timer.h>
-#include <arch/CoreLocal.h>
 #include <arch/Atomic.h>
-#include <arch/MmArch.h>
+#include <arch/CoreLocal.h>
 #include <arch/CpuHint.h>
+#include <arch/MmArch.h>
+#include <boot/Loader.h>
 #include <core/Memory.h>
 #include <core/Spcb.h>
 #include <debug/DbgPrint.h>
 #include <debug/Panic.h>
+#include <dispatcher/Scheduler.h>
 #include <executive/Init.h>
-#include <limine.h>
+#include <executive/Timer.h>
 #include <mm/Early.h>
+#include <mm/Vas.h>
 
 static struct Core_SPCB *s_SpcbArray = nullptr;
 static u32               s_CpuCount  = 0;
@@ -26,9 +26,11 @@ u32 Core_GetProcessorCount(void)
     return s_CpuCount;
 }
 
-bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
+bool Core_SpcbAllocateAll(void)
 {
-    if (!mpResponse || mpResponse->cpu_count <= 1)
+    const Boot_SmpInfo *smp = Boot_GetSmpInfo();
+
+    if (!smp)
     {
         s_CpuCount = 1;
         Log(TRACE, "falling back to uniprocessor mode");
@@ -37,7 +39,7 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
         s_SpcbArray     = Mm_PermanentAllocate(totalSize, 64);
 
         if (!s_SpcbArray)
-            Panic("Mm_EarlyAllocate failed for UP SPCB!");
+            Panic("Mm_PermanentAllocate failed for UP SPCB!");
 
         Log(TRACE, "allocated BSP SPCB at %p", s_SpcbArray);
         Core_ZeroMemory(s_SpcbArray, totalSize);
@@ -48,22 +50,21 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
         return false;
     }
 
-    s_CpuCount = mpResponse->cpu_count;
+    s_CpuCount = smp->Count;
     Log(INFO, "detected %u processors", s_CpuCount);
 
     usize totalSize = sizeof(struct Core_SPCB) * s_CpuCount;
     s_SpcbArray     = Mm_PermanentAllocate(totalSize, 64);
 
     if (!s_SpcbArray)
-        Panic("Mm_EarlyAllocate failed for %u SMP SPCBs!", s_CpuCount);
+        Panic("Mm_PermanentAllocate failed for %u SMP SPCBs!", s_CpuCount);
 
     Log(TRACE, "allocated SPCBs array at %p (size %llZ)", s_SpcbArray, totalSize);
     Core_ZeroMemory(s_SpcbArray, totalSize);
 
-    const ArchId_t archIdBsp = Arch_GetBspArchId(mpResponse);
-    u32            bspIndex  = 0;
+    u32 bspIndex = 0;
     for (u32 i = 0; i < s_CpuCount; i++)
-        if (Arch_GetArchId(mpResponse->cpus[i]) == archIdBsp)
+        if (smp->ArchIds[i] == smp->BspArchId)
         {
             bspIndex = i;
             break;
@@ -79,16 +80,16 @@ bool Core_SpcbAllocateAll(struct limine_mp_response *mpResponse)
 
         s_SpcbArray[targetSpcbIndex].Self            = &s_SpcbArray[targetSpcbIndex];
         s_SpcbArray[targetSpcbIndex].ProcessorNumber = targetSpcbIndex;
-        s_SpcbArray[targetSpcbIndex].ArchId          = Arch_GetArchId(mpResponse->cpus[i]);
+        s_SpcbArray[targetSpcbIndex].ArchId          = smp->ArchIds[i];
 
-        mpResponse->cpus[i]->extra_argument = (uptr)&s_SpcbArray[targetSpcbIndex];
+        Boot_SetCpuExtra(i, (uptr)&s_SpcbArray[targetSpcbIndex]);
 
         Log(TRACE, "SPCB[%u] mapped to ArchId %u at %p", i, s_SpcbArray[targetSpcbIndex].ArchId,
             &s_SpcbArray[targetSpcbIndex]);
     }
 
     if (!Core_SpcbInit(&s_SpcbArray[0]))
-        Panic("Core_SpcbInit failed for BSP SPCR!");
+        Panic("Core_SpcbInit failed for BSP SPCB!");
 
     return true;
 }
@@ -98,12 +99,11 @@ bool Core_SpcbInit(struct Core_SPCB *spcb)
     if (!Arch_SpcrInit(&spcb->ArchData))
     {
         bool isAp = spcb->ProcessorNumber != 0;
-        Log(ERROR, "Arch_SpcrInit failed for SPCR[%i]%s", spcb->ProcessorNumber, isAp ? " AP will be offline!" : "");
-
+        Log(ERROR, "Arch_SpcrInit failed for SPCB[%i]%s", spcb->ProcessorNumber, isAp ? " AP will be offline!" : "");
         return false;
     }
-    Arch_SetCoreSpcb(spcb);
 
+    Arch_SetCoreSpcb(spcb);
     return true;
 }
 
@@ -115,9 +115,9 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
     return &s_SpcbArray[processorNumber];
 }
 
-[[noreturn]] static void s_ApEntry(struct limine_mp_info *info)
+[[noreturn]] static void s_ApEntry(uptr arg)
 {
-    struct Core_SPCB *spcb = (struct Core_SPCB *)(uptr)info->extra_argument;
+    struct Core_SPCB *spcb = (struct Core_SPCB *)arg;
 
     if (!Core_SpcbInit(spcb))
         Ex_HaltCatchFire();
@@ -139,7 +139,7 @@ struct Core_SPCB *Core_SpcbGetByNumber(u32 processorNumber)
     unreachable();
 }
 
-void Core_SpcbBootAll(struct limine_mp_response *mpResponse)
+void Core_SpcbBootAll(void)
 {
     if (s_CpuCount <= 1)
     {
@@ -150,23 +150,14 @@ void Core_SpcbBootAll(struct limine_mp_response *mpResponse)
     Arch_AtomicStore32(&s_ApReadyCount, 0);
     Arch_AtomicStore32(&s_ApRelease, 0);
 
-    const ArchId_t bspId       = Arch_GetBspArchId(mpResponse);
-    u32            expectedAps = 0;
+    u32 expectedAps = s_CpuCount - 1;
 
-    for (u32 i = 0; i < mpResponse->cpu_count; i++)
-    {
-        if (Arch_GetArchId(mpResponse->cpus[i]) == bspId)
-            continue;
-
-        Arch_AtomicStore64((Arch_Atomic64 *)&mpResponse->cpus[i]->goto_address, (uptr)s_ApEntry);
-        expectedAps++;
-    }
+    Boot_LaunchAps(s_ApEntry);
 
     while (Arch_AtomicLoad32(&s_ApReadyCount) < expectedAps)
         Arch_CpuRelax();
 
     Log(INFO, "%u application processors online and parked", expectedAps);
-    return;
 }
 
 void Core_SpcbReleaseAps(void)
