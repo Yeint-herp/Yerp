@@ -24,6 +24,7 @@ typedef uptr vaddr_t;
 #define U32_MAX ((u32) - 1)
 
 #define unreachable()  __builtin_unreachable()
+#define counted_by(x) __attribute__((counted_by(x)))
 #define ArraySize(arr) sizeof(arr) / sizeof(*arr)
 
 #define Bit_FirstSetIndex(x)   __builtin_ctz(x)
