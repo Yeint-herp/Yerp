@@ -1,3 +1,4 @@
+#include <io/Io.h>
 #define DBG_MODULE "Executive"
 
 #include <acpi/Acpi.h>
@@ -37,6 +38,7 @@ void Ex_InitializeLate(void *param)
     Mm_ZeroPageInit();
 
     Cf_PopulateHardware(&Ds_GetSystemVm()->HandleTable, Ds_GetSystemVm()->Token);
+    Io_SystemInit();
 
     Ds_ThreadExit(0);
 }
