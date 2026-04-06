@@ -7,5 +7,8 @@
 - Dispatcher
     - [ ] Replace the Big Dispatcher™ Lock with fine grained locks.
 
+- Boot
+    - [ ] Replace static translation into fix bound array with demand translating via an iterator API.
+
 > Refactor:
 > - Switch to using paddr_t and vaddr_t in the Mm subsystem.
