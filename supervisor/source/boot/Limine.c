@@ -28,15 +28,21 @@ static volatile struct limine_executable_address_request s_ExecAddrReq = {.id = 
 static volatile struct limine_mp_request s_SmpReq = {.id = LIMINE_MP_REQUEST_ID, .revision = 0};
 
 [[gnu::used, gnu::section(".limine_requests")]]
+static volatile struct limine_module_request s_ModuleReq = {.id = LIMINE_MODULE_REQUEST_ID, .revision = 0};
+
+[[gnu::used, gnu::section(".limine_requests")]]
 static volatile struct limine_rsdp_request s_RsdpReq = {.id = LIMINE_RSDP_REQUEST_ID, .revision = 0};
 
 #define MAX_MEMMAP_ENTRIES 256
 #define MAX_CPUS           256
+#define MAX_MODULES        64
 
-static Boot_MemEntry s_MemEntries[MAX_MEMMAP_ENTRIES];
-static Boot_MemMap   s_MemMap;
-static u32           s_ArchIds[MAX_CPUS];
-static Boot_SmpInfo  s_SmpInfo;
+static Boot_Module     s_Modules[MAX_MODULES];
+static Boot_ModuleList s_ModuleList;
+static Boot_MemEntry   s_MemEntries[MAX_MEMMAP_ENTRIES];
+static Boot_MemMap     s_MemMap;
+static u32             s_ArchIds[MAX_CPUS];
+static Boot_SmpInfo    s_SmpInfo;
 
 static struct limine_mp_response *s_MpResponse = nullptr;
 
@@ -102,6 +108,24 @@ bool Boot_Limine_Probe(void)
             s_ArchIds[i] = s_MpResponse->cpus[i]->lapic_id;
     }
 
+    struct limine_module_response *modResp = s_ModuleReq.response;
+    if (modResp && modResp->module_count > 0)
+    {
+        count = modResp->module_count;
+        if (count > MAX_MODULES)
+            count = MAX_MODULES;
+
+        for (usize i = 0; i < count; i++)
+        {
+            struct limine_file *file = modResp->modules[i];
+            s_Modules[i].Base        = file->address;
+            s_Modules[i].Size        = file->size;
+            s_Modules[i].Name        = file->string;
+        }
+        s_ModuleList.Modules = s_Modules;
+        s_ModuleList.Count   = count;
+    }
+
     return true;
 }
 
@@ -132,6 +156,14 @@ const Boot_SmpInfo *Boot_Limine_GetSmpInfo(void)
         return nullptr;
 
     return &s_SmpInfo;
+}
+
+const Boot_ModuleList *Boot_Limine_GetModules(void)
+{
+    if (s_ModuleList.Count == 0)
+        return nullptr;
+
+    return &s_ModuleList;
 }
 
 void Boot_Limine_SetCpuExtra(u32 cpuIndex, uptr extra)

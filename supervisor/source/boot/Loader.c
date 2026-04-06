@@ -69,6 +69,17 @@ const Boot_SmpInfo *Boot_GetSmpInfo(void)
     }
 }
 
+const Boot_ModuleList *Boot_GetModules(void)
+{
+    switch (s_Active)
+    {
+        case kLoaderLimine:
+            return Boot_Limine_GetModules();
+        default:
+            return nullptr;
+    }
+}
+
 void Boot_SetCpuExtra(u32 cpuIndex, uptr extra)
 {
     switch (s_Active)

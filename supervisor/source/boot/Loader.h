@@ -26,12 +26,26 @@ typedef struct
     ArchId_t *ArchIds;
 } Boot_SmpInfo;
 
+typedef struct
+{
+    const void *Base;
+    usize       Size;
+    const char *Name;
+} Boot_Module;
+
+typedef struct
+{
+    Boot_Module *Modules;
+    usize        Count;
+} Boot_ModuleList;
+
 bool Boot_Init(void);
 
-u64                 Boot_GetHhdmOffset(void);
-uptr                Boot_GetRsdpPhys(void);
-Boot_MemMap        *Boot_GetMemMap(void);
-const Boot_SmpInfo *Boot_GetSmpInfo(void);
+u64                    Boot_GetHhdmOffset(void);
+uptr                   Boot_GetRsdpPhys(void);
+Boot_MemMap           *Boot_GetMemMap(void);
+const Boot_SmpInfo    *Boot_GetSmpInfo(void);
+const Boot_ModuleList *Boot_GetModules(void);
 
 void Boot_SetCpuExtra(u32 cpuIndex, uptr extra);
 
