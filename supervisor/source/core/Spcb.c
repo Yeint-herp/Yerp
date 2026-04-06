@@ -1,7 +1,6 @@
-#include <const.h>
-#include <dispatcher/Scheduler.h>
 #define DBG_MODULE "Spcb"
 
+#include <dispatcher/Scheduler.h>
 #include <mm/Vas.h>
 #include <executive/Timer.h>
 #include <arch/CoreLocal.h>
