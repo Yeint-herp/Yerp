@@ -1,0 +1,16 @@
+    Yeint’s Experimental Research Platform
+
+This iteration of the Yerp project aims to
+implement the entire pipeline of operating
+system development in the DC programming 
+language.
+
+Repositary contains the source code of the
+EFI bootloader called loader, the operating
+system kernel, called supervisor as well as
+all of the relevant drivers and build system
+code for scaffolding and building the project.
+
+All code contained within this repositary is
+licensed exclusively under the GNU General
+Public License Version 2 dated June 1991.
