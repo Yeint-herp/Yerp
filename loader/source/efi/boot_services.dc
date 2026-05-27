@@ -1,0 +1,5 @@
+module efi::boot_services;
+
+public struct boot_services_table {
+
+}

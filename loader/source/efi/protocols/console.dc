@@ -1,0 +1,88 @@
+module efi::protocols::console;
+
+public import efi;
+
+public const guid simple_text_input_protocol = {0x387477c1, 0x69c7, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+public const guid simple_text_output_protocol = {0x387477c2, 0x69c7, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+
+public enum scancodes {
+    Null = 0x0,
+    ArrowUp = 0x1,
+    ArrowDown = 0x2,
+    ArrowRight = 0x3,
+    ArrowLeft = 0x4,
+    Home = 0x5,
+    End = 0x6,
+    Insert = 0x7,
+    Delete = 0x8,
+    PageUp = 0x9,
+    PageDow = 0xa,
+    Fn1 = 0xb,
+    Fn2 = 0xc,
+    Fn3 = 0xd,
+    Fn4 = 0xe,
+    Fn5 = 0xf,
+    Fn6 = 0x10,
+    Fn7 = 0x11,
+    Fn8 = 0x12,
+    Fn9 = 0x13,
+    Fn10 = 0x14,
+    Esc = 0x17
+}
+
+public using input_read_key = u64(*)(simple_text_input*, input_key);
+public using input_reset = u64(*)(simple_text_input*, bool);
+
+public struct input_key {
+    u16 scan_code;
+    u16 unicode;
+}
+
+public struct simple_text_input {
+    input_reset reset;
+    input_read_key read_keystroke;
+    event wait_for_key;
+}
+
+public using output_string = u64(*)(simple_text_output*, const u16*);
+public using output_test_string = u64(*)(simple_text_output*, const u16*);
+public using output_query_mode = u64(*)(simple_text_output*, u64, u64*, u64*);
+public using output_set_mode = u64(*)(simple_text_output*, u64);
+public using output_set_attribute = u64(*)(simple_text_output*, u64);
+public using output_clear_screen = u64(*)(simple_text_output*);
+public using output_set_cursor_position = u64(*)(simple_text_output*, u64, u64);
+public using output_enable_cursor = u64(*)(simple_text_output*, bool);
+public using output_reset = u64(*)(simple_text_output*, bool);
+
+public struct simple_text_output {
+    output_reset reset;
+    output_string output_string;
+    output_test_string test_string;
+    output_query_mode query_mode;
+    output_set_mode set_mode;
+    output_set_attribute set_attribute;
+    output_clear_screen clear_screen;
+    output_set_cursor_position set_cursor_position;
+    output_enable_cursor enable_cursor;
+
+    simple_text_output_mode* mode;
+}
+
+public struct simple_text_output_mode {
+    i32 max_mode;
+    i32 mode;
+
+    i32 attributes;
+
+    i32 cursor_column;
+    i32 cursor_row;
+    bool cursor_visible;
+}
+
+public void write(simple_text_output* self, const u16* str) {
+    self.output_string(self, str);
+}
+
+public void clear(simple_text_output* self) {
+    self.clear_screen(self);
+}

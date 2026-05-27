@@ -1,0 +1,46 @@
+module efi;
+
+public import efi::protocols::console;
+public import efi::runtime_services;
+public import efi::boot_services;
+
+public using handle = void*;
+public using event = handle;
+
+public struct table_header {
+    u64 signature;
+    u32 revision;
+    u32 header_size;
+    u32 crc32;
+    u32 reserved;
+}
+
+public struct guid {
+    u32 data1;
+    u16 data2;
+    u16 data3;
+    u8[8] data4;
+}
+
+public const guid global_variable = {0x8be4df61, 0x93ca, 0x11d2, {0xaa, 0x0d, 0x00, 0xe0, 0x98, 0x03, 0x2b, 0x8c}};
+
+public struct system_table {
+    table_header header;
+
+    u16* firmware_vendor;
+    u32 firmware_revision;
+    u32 _pad0;
+
+    handle console_in_handle;
+    efi::protocols::console::simple_text_input* console_in;
+    handle console_out_handle;
+    efi::protocols::console::simple_text_output* console_out;
+    handle console_err_handle;
+    efi::protocols::console::simple_text_output* console_err;
+
+    efi::runtime_services::runtime_service_table* runtime_services;
+    efi::boot_services::boot_services_table* boot_services;
+
+    u64 table_entry_count;
+    void*[] configuration_table;
+}
