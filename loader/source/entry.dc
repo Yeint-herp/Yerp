@@ -1,0 +1,9 @@
+module entry;
+
+@nomangle
+void efi_main(void* image_handle, void* system_table) {
+
+    for ;; {
+
+    }
+}
