@@ -1,5 +1,238 @@
 module efi::boot_services;
 
-public struct boot_services_table {
+public import efi;
 
+public enum timer_delay {
+    TimerCancel,
+    TimerPeriodic,
+    TimerRelative
+}
+
+public enum allocate_type {
+    AllocateAnyAddress,
+    AllocateMaxAddress,
+    AllocateAddress
+}
+
+public enum memory_type {
+    Reserved,
+    LoaderCode,
+    LoaderData,
+    BootServicesCode,
+    BootServicesData,
+    RuntimeServicesCode,
+    RuntimeServicesData,
+    Conventional,
+    Unusable,
+    ACPIReclaimable,
+    ACPINVS,
+    MMIO,
+    MMIOPortSpace,
+    PalCode,
+    PersistentMemory,
+    Unaccepted
+}
+
+public enum interface_type {
+    NativeInterface
+}
+
+public enum locate_search_type {
+    AllHandles,
+    ByRegisterNotify,
+    ByProtocol
+}
+
+public struct device_path_protocol {
+    u8 type;
+    u8 subtype;
+    u8[2] length;
+}
+
+public struct memory_descriptor {
+    u32 type;
+    u64 physical_start;
+    u64 virtual_start;
+    u64 number_of_pages;
+    u64 attribute;
+}
+
+public struct open_protocol_information_entry {
+    void* agent_handle;
+    void* controller_handle;
+    u32 attributes;
+    u32 open_count;
+}
+
+public using event_notify = void(*)(void*, void*);
+public using raise_tpl = u64(*)(u64);
+public using restore_tpl = u64(*)(u64);
+public using allocate_pages = u64(*)(allocate_type, memory_type, u64, u64*);
+public using free_pages = u64(*)(u64, u64);
+public using get_memory_map = u64(*)(u64*, memory_descriptor*, u64*, u64*, u32*);
+public using allocate_pool = u64(*)(memory_type, u64, void**);
+public using free_pool = u64(*)(void*);
+public using create_event = u64(*)(u32, u64, event_notify, void*, void**);
+public using set_timer = u64(*)(void*, timer_delay, u64);
+public using wait_for_event = u64(*)(u64, void**, u64*);
+public using signal_event = u64(*)(void*);
+public using close_event = u64(*)(void*);
+public using check_event = u64(*)(void*);
+public using install_protocol_interface = u64(*)(void**, guid*, interface_type, void*);
+public using reinstall_protocol_interface = u64(*)(void*, guid*, void*, void*);
+public using uninstall_protocol_interface = u64(*)(void*, guid*, void*);
+public using handle_protocol = u64(*)(void*, guid*, void**);
+public using register_protocol_notify = u64(*)(guid*, void*, void**);
+public using locate_handle = u64(*)(locate_search_type, guid*, void*, u64*, void**);
+public using locate_device_path = u64(*)(guid*, device_path_protocol**, void**);
+public using install_configuration_table = u64(*)(guid*, void*);
+public using image_load = u64(*)(bool, void*, device_path_protocol*, void*, u64, void**);
+public using image_start = u64(*)(void*, u64*, u16**);
+public using exit = u64(*)(void*, u64, u64, u16*);
+public using image_unload = u64(*)(void*);
+public using exit_boot_services = u64(*)(void*, u64);
+public using get_next_monotonic_count = u64(*)(u64*);
+public using stall = u64(*)(u64);
+public using set_watchdog_timer = u64(*)(u64, u64, u64, u16*);
+public using connect_controller = u64(*)(void*, void**, device_path_protocol*, bool);
+public using disconnect_controller = u64(*)(void*, void*, void*);
+public using open_protocol_information = u64(*)(void*, guid*, open_protocol_information_entry**, u64*);
+public using open_protocol = u64(*)(void*, guid*, void**, void*, void*, u32);
+public using close_protocol = u64(*)(void*, guid*, void*, void*);
+public using protocols_per_handle = u64(*)(void*, guid***, u64*);
+public using locate_handle_buffer = u64(*)(locate_search_type, guid*, void*, u64*, void***);
+public using locate_protocol = u64(*)(guid*, void*, void**);
+public using calculate_crc32 = u64(*)(void*, u64, u32*);
+public using copy_mem = void(*)(void*, void*, u64);
+public using set_mem = void(*)(void*, u64, u8);
+public using create_event_ex = u64(*)(u32, u64, event_notify, void*, guid*, void**);
+
+public struct boot_services_table {
+    table_header header;
+
+    raise_tpl raise_tpl;
+    restore_tpl restore_tpl;
+
+    allocate_pages allocate_pages;
+    free_pages free_pages;
+    get_memory_map get_memory_map;
+    allocate_pool allocate_pool;
+    free_pool free_pool;
+
+    create_event create_event;
+    set_timer set_timer;
+    wait_for_event wait_for_event;
+    signal_event signal_event;
+    close_event close_event;
+    check_event check_event;
+
+    install_protocol_interface install_protocol_interface;
+    reinstall_protocol_interface reinstall_protocol_interface;
+    uninstall_protocol_interface uninstall_protocol_interface;
+    handle_protocol handle_protocol;
+    void* reserved;
+    register_protocol_notify register_protocol_notify;
+    locate_handle locate_handle;
+    locate_device_path locate_device_path;
+    install_configuration_table install_configuration_table;
+
+    image_load load_image;
+    image_start start_image;
+    exit exit;
+    image_unload unload_image;
+    exit_boot_services exit_boot_services;
+
+    get_next_monotonic_count get_next_monotonic_count;
+    stall stall;
+    set_watchdog_timer set_watchdog_timer;
+
+    connect_controller connect_controller;
+    disconnect_controller disconnect_controller;
+
+    open_protocol open_protocol;
+    close_protocol close_protocol;
+    open_protocol_information open_protocol_information;
+
+    protocols_per_handle protocols_per_handle;
+    locate_handle_buffer locate_handle_buffer;
+    locate_protocol locate_protocol;
+    void* install_multiple_protocol_interfaces;
+    void* uninstall_multiple_protocol_interfaces;
+
+    calculate_crc32 calculate_crc32;
+
+    copy_mem copy_mem;
+    set_mem set_mem;
+    create_event_ex create_event_ex;
+}
+
+public void* allocate_pool(boot_services_table* bs, memory_type pool_type, u64 size) 
+{
+    void* buffer;
+    u64 status = bs.allocate_pool(pool_type, size, &buffer);
+
+    if status != 0 {
+        return null; 
+    }
+
+    return buffer;
+}
+
+public void free_pool(boot_services_table* bs, void* buffer) 
+{
+    bs.free_pool(buffer);
+}
+
+public void copy_mem(boot_services_table* bs, void* dest, void* src, u64 length) 
+{
+    bs.copy_mem(dest, src, length);
+}
+
+public void set_mem(boot_services_table* bs, void* buffer, u64 size, u8 value) 
+{
+    bs.set_mem(buffer, size, value);
+}
+
+public void* locate_protocol(boot_services_table* bs, guid* protocol) 
+{
+    void* interface;
+    u64 status = bs.locate_protocol(protocol, null, &interface);
+
+    if status != 0 {
+        return null;
+    }
+
+    return interface;
+}
+
+public void* handle_protocol(boot_services_table* bs, void* handle, guid* protocol) 
+{
+    void* interface;
+    u64 status = bs.handle_protocol(handle, protocol, &interface);
+
+    if status != 0 {
+        return null;
+    }
+
+    return interface;
+}
+
+public void stall(boot_services_table* bs, u64 microseconds) 
+{
+    bs.stall(microseconds);
+}
+
+public u64 set_timer(boot_services_table* bs, void* event, timer_delay delay_type, u64 trigger_time) 
+{
+    return bs.set_timer(event, delay_type, trigger_time);
+}
+
+public u64 wait_for_event(boot_services_table* bs, u64 number_of_events, void** events, u64* index) 
+{
+    return bs.wait_for_event(number_of_events, events, index);
+}
+
+public u64 exit(boot_services_table* bs, void* image_handle, u64 map_key) 
+{
+    return bs.exit_boot_services(image_handle, map_key);
 }
