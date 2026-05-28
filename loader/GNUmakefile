@@ -29,9 +29,9 @@ LDFLAGS := /subsystem:efi_application \
 	/fixed:no /dynamicbase:no /nxcompat:no
 
 ifeq ($(MODE),debug)
-DCFLAGS += -fbounds-check -g3
+DCFLAGS += -fbounds-check -fno-omit-frame-pointer -gdwarf
 else
-DCFLAGS += -g0
+DCFLAGS += -gnone
 endif
 
 DC_SRCS := $(shell find source -type f -name '*.dc')
