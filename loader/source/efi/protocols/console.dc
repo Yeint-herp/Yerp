@@ -79,10 +79,10 @@ public struct simple_text_output_mode {
     bool cursor_visible;
 }
 
-public void write(simple_text_output* self, const u16* str) {
-    self.output_string(self, str);
+public u64 write(simple_text_output* self, const u16* str) {
+    return self.output_string(self, str);
 }
 
-public void clear(simple_text_output* self) {
-    self.clear_screen(self);
+public u64 clear(simple_text_output* self) {
+    return self.clear_screen(self);
 }
