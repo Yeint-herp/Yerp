@@ -2,6 +2,7 @@ module efi::protocols::console;
 
 public import efi;
 public import efi::boot_services;
+public import efi::status;
 
 public const guid simple_text_input_protocol = {0x387477c1, 0x69c7, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
 public const guid simple_text_output_protocol = {0x387477c2, 0x69c7, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
@@ -82,11 +83,11 @@ public struct simple_text_output_mode {
     bool cursor_visible;
 }
 
-public u64 write(simple_text_output* self, []const u16 str) {
-    return self.output_string(self, str.ptr);
+public status::status write(simple_text_output* self, []const u16 str) {
+    return self.output_string(self, str.ptr) as status::status;
 }
 
-public u64 write(simple_text_output* self, []const char str) {
+public status::status write(simple_text_output* self, []const char str) {
     const u64 max_len = str.len * 2;
     u16[max_len + 1] buf;
 
@@ -98,47 +99,47 @@ public u64 write(simple_text_output* self, []const char str) {
     }
 
     buf[i] = 0;
-    return self.output_string(self, buf as const u16*);
+    return self.output_string(self, buf as const u16*) as status::status;
 }
 
-public u64 write(simple_text_output* self, const char ch) {
+public status::status write(simple_text_output* self, const char ch) {
     []const char str = {ch};
-    return self.write(str);
+    return self.write(str) as status::status;
 }
 
-public u64 write(simple_text_output* self, const u16 ch) {
+public status::status write(simple_text_output* self, const u16 ch) {
     []const u16 str = {ch};
-    return self.write(str);
+    return self.write(str) as status::status;
 }
 
-public u64 clear(simple_text_output* self) {
-    return self.clear_screen(self);
+public status::status clear(simple_text_output* self) {
+    return self.clear_screen(self) as status::status;
 }
 
-public u64 set_cursor(simple_text_output* self, u64 col, u64 row) {
-    return self.set_cursor_position(self, col, row);
+public status::status set_cursor(simple_text_output* self, u64 col, u64 row) {
+    return self.set_cursor_position(self, col, row) as status::status;
 }
 
-public u64 enable_cursor(simple_text_output* self, bool visible) {
-    return self.enable_cursor(self, visible);
+public status::status enable_cursor(simple_text_output* self, bool visible) {
+    return self.enable_cursor(self, visible) as status::status;
 }
 
-public u64 set_attribute(simple_text_output* self, u64 attr) {
-    return self.set_attribute(self, attr);
+public status::status set_attribute(simple_text_output* self, u64 attr) {
+    return self.set_attribute(self, attr) as status::status;
 }
 
-public u64 read_key(simple_text_input* self, boot_services::boot_services_table* bs, input_key* key) {
+public status::status read_key(simple_text_input* self, boot_services::boot_services_table* bs, input_key* key) {
     u64 index;
     void*[1] events = { self.wait_for_key };
 
-    u64 status = boot_services::wait_for_event(bs, 1, events as void**, &index);
-    if status != 0 {
-        return status;
+    status::status st = boot_services::wait_for_event(bs, 1, events as void**, &index);
+    if st != status::status::Success {
+        return st;
     }
 
-    return self.read_keystroke(self, key);
+    return self.read_keystroke(self, key) as status::status;
 }
 
-public u64 poll_key(simple_text_input* self, input_key* key) {
-    return self.read_keystroke(self, key);
+public status::status poll_key(simple_text_input* self, input_key* key) {
+    return self.read_keystroke(self, key) as status::status;
 }
