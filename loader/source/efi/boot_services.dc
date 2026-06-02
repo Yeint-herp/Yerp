@@ -166,6 +166,14 @@ public struct boot_services_table {
     create_event_ex create_event_ex;
 }
 
+public struct memory_map {
+    memory_descriptor* map;
+    u64 map_size;
+    u64 map_key;
+    u64 descriptor_size;
+    u32 descriptor_version;
+}
+
 public void* allocate_pool(boot_services_table* bs, memory_type pool_type, u64 size) 
 {
     void* buffer;
@@ -177,6 +185,17 @@ public void* allocate_pool(boot_services_table* bs, memory_type pool_type, u64 s
 
     return buffer;
 }
+
+public void* allocate_pool_zeroed(boot_services_table* bs, memory_type pool_type, u64 size) {
+    void* buffer = allocate_pool(bs, pool_type, size);
+    if buffer == null {
+        return null;
+    }
+
+    bs.set_mem(buffer, size, 0);
+    return buffer;
+}
+
 
 public void free_pool(boot_services_table* bs, void* buffer) 
 {
@@ -235,4 +254,99 @@ public u64 wait_for_event(boot_services_table* bs, u64 number_of_events, void** 
 public u64 exit(boot_services_table* bs, void* image_handle, u64 map_key) 
 {
     return bs.exit_boot_services(image_handle, map_key);
+}
+
+public u64 allocate_pages(boot_services_table* bs, allocate_type kind, memory_type mem_type, u64 pages, u64* address) {
+    return bs.allocate_pages(kind, mem_type, pages, address);
+}
+
+public u64 free_pages(boot_services_table* bs, u64 address, u64 pages) {
+    return bs.free_pages(address, pages);
+}
+
+public u64 get_memory_map(boot_services_table* bs, memory_map* out) {
+    out.map = null;
+    out.map_size = 0;
+    out.map_key = 0;
+    out.descriptor_size = 0;
+    out.descriptor_version = 0;
+
+    u64 size = 0;
+    u64 status = bs.get_memory_map(&size, null, &out.map_key, &out.descriptor_size, &out.descriptor_version);
+
+    if status != 0x8000000000000005 && status != 0 {
+        return status;
+    }
+
+    u64 padding = out.descriptor_size * 2;
+    u64 alloc_size = size + padding;
+
+    u64 attempts = 0;
+    while attempts < 5 {
+        out.map = allocate_pool(bs, memory_type::LoaderData, alloc_size) as memory_descriptor*;
+        if out.map == null {
+            return 0x8000000000000009;
+        }
+
+        out.map_size = alloc_size;
+        status = bs.get_memory_map(&out.map_size, out.map, &out.map_key, &out.descriptor_size, &out.descriptor_version);
+
+        if status == 0 {
+            return 0;
+        }
+
+        free_pool(bs, out.map as void*);
+        out.map = null;
+
+        if status != 0x8000000000000005 {
+            return status;
+        }
+
+        alloc_size = out.map_size + padding;
+        attempts++;
+    }
+
+    return 0x8000000000000012;
+}
+
+public void free_memory_map(boot_services_table* bs, memory_map* m) {
+    if m.map != null {
+        free_pool(bs, m.map as void*);
+        m.map = null;
+    }
+}
+
+public u64 exit_boot_services(boot_services_table* bs, void* image_handle, memory_map* current_map) {
+    u64 status = bs.exit_boot_services(image_handle, current_map.map_key);
+    if status == 0 {
+        return 0;
+    }
+
+    free_memory_map(bs, current_map);
+    u64 r = get_memory_map(bs, current_map);
+    if r != 0 {
+        return r;
+    }
+
+    return bs.exit_boot_services(image_handle, current_map.map_key);
+}
+
+public u64 create_event(boot_services_table* bs, u32 type, u64 notify_tpl, event_notify notify_fn, void* notify_ctx, void** out_event) {
+    return bs.create_event(type, notify_tpl, notify_fn, notify_ctx, out_event);
+}
+
+public u64 close_event(boot_services_table* bs, void* event) {
+    return bs.close_event(event);
+}
+
+public u64 signal_event(boot_services_table* bs, void* event) {
+    return bs.signal_event(event);
+}
+
+public u64 check_event(boot_services_table* bs, void* event) {
+    return bs.check_event(event);
+}
+
+public u64 locate_handle_buffer(boot_services_table* bs, locate_search_type kind, guid* protocol, u64* count, void*** handles) {
+    return bs.locate_handle_buffer(kind, protocol, null, count, handles);
 }
