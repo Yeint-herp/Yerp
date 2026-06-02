@@ -19,7 +19,7 @@ LD := lld-link
 TARGET := x86_64-coff
 
 DCFLAGS := -I$(LOADER_SOURCE_DIR) \
-	-fno-simd -fno-x87 -fno-red-zone
+	-fno-simd -fno-x87 -fno-red-zone -fno-stack-protector -fno-stack-probe
 
 LDFLAGS := /subsystem:efi_application \
 	/machine:x64 \
@@ -30,6 +30,7 @@ LDFLAGS := /subsystem:efi_application \
 
 ifeq ($(MODE),debug)
 DCFLAGS += -fbounds-check -fno-omit-frame-pointer -gdwarf
+LDFLAGS += /debug:dwarf
 else
 DCFLAGS += -gnone
 endif
