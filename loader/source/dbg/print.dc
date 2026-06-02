@@ -2,7 +2,6 @@ module dbg::print;
 
 using WritableInto(T) = compiles(T x) {
     x.write("H");
-    x.write(u"H");
     x.write('H');
 };
 
