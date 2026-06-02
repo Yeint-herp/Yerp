@@ -1,0 +1,151 @@
+module efi::protocols::file;
+
+public import efi;
+public import efi::boot_services;
+public import efi::status;
+
+public const guid simple_file_system_protocol = {0x964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+public const guid file_info_id = {0x09576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+public const guid file_system_info_id = {0x09576e93, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+
+public const u64 FILE_MODE_READ = 0x0000000000000001;
+public const u64 FILE_MODE_WRITE = 0x0000000000000002;
+public const u64 FILE_MODE_CREATE = 0x8000000000000000;
+
+public const u64 FILE_READ_ONLY = 0x01;
+public const u64 FILE_HIDDEN = 0x02;
+public const u64 FILE_SYSTEM = 0x04;
+public const u64 FILE_RESERVED = 0x08;
+public const u64 FILE_DIRECTORY = 0x10;
+public const u64 FILE_ARCHIVE = 0x20;
+
+public using file_open = u64(*)(file_protocol*, file_protocol**, u16*, u64, u64);
+public using file_close = u64(*)(file_protocol*);
+public using file_delete = u64(*)(file_protocol*);
+public using file_read = u64(*)(file_protocol*, u64*, void*);
+public using file_write = u64(*)(file_protocol*, u64*, void*);
+public using file_get_pos = u64(*)(file_protocol*, u64*);
+public using file_set_pos = u64(*)(file_protocol*, u64);
+public using file_get_info = u64(*)(file_protocol*, guid*, u64*, void*);
+public using file_set_info = u64(*)(file_protocol*, guid*, u64, void*);
+public using file_flush = u64(*)(file_protocol*);
+
+public struct file_protocol {
+    u64 revision;
+    file_open open;
+    file_close close;
+    file_delete delete;
+    file_read read;
+    file_write write;
+    file_get_pos get_position;
+    file_set_pos set_position;
+    file_get_info get_info;
+    file_set_info set_info;
+    file_flush flush;
+}
+
+public using sfs_open_volume = u64(*)(simple_file_system_protocol_t*, file_protocol**);
+
+public struct simple_file_system_protocol_t {
+    u64 revision;
+    sfs_open_volume open_volume;
+}
+
+public struct file_info {
+    u64 size;
+    u64 file_size;
+    u64 physical_size;
+    u8[72] times_padding;
+    u64 attribute;
+    u16[] file_name;
+}
+
+public file_protocol* open_volume(simple_file_system_protocol_t* sfs) {
+    file_protocol* root;
+    status::status status = sfs.open_volume(sfs, &root) as status::status;
+    if status != status::status::Success {
+        return null;
+    }
+
+    return root;
+}
+
+public file_protocol* open(file_protocol* dir, u16* path, u64 mode, u64 attributes) {
+    file_protocol* f;
+    status::status status = dir.open(dir, &f, path, mode, attributes) as status::status;
+    if status != status::status::Success {
+        return null;
+    }
+
+    return f;
+}
+
+public status::status close(file_protocol* f) {
+    return f.close(f) as status::status;
+}
+
+public status::status read(file_protocol* f, u64* size, void* buffer) {
+    return f.read(f, size, buffer) as status::status;
+}
+
+public status::status write(file_protocol* f, u64* size, void* buffer) {
+    return f.write(f, size, buffer) as status::status;
+}
+
+public status::status set_position(file_protocol* f, u64 pos) {
+    return f.set_position(f, pos) as status::status;
+}
+
+public status::status get_position(file_protocol* f, u64* pos) {
+    return f.get_position(f, pos) as status::status;
+}
+
+public void* read_all(boot_services_table* bs, file_protocol* f, u64* out_size) {
+    guid info_guid = file_info_id;
+    u64 info_size = 0;
+
+    status::status st = f.get_info(f, &info_guid, &info_size, null) as status::status;
+    if st != status::status::BufferTooSmall && st != status::status::Success {
+        return null;
+    }
+
+    void* info_buf = allocate_pool(bs, memory_type::LoaderData, info_size);
+    if info_buf == null {
+        return null;
+    }
+
+    st = f.get_info(f, &info_guid, &info_size, info_buf) as status::status;
+    if st != status::status::Success {
+        free_pool(bs, info_buf);
+        return null;
+    }
+
+    file_info* fi = info_buf as file_info*;
+    u64 file_size = fi.file_size;
+    free_pool(bs, info_buf);
+
+    void* data = allocate_pool(bs, memory_type::LoaderData, file_size);
+    if data == null {
+        return null;
+    }
+
+    u64 to_read = file_size;
+    st = f.read(f, &to_read, data) as status::status;
+    if st != status::status::Success {
+        free_pool(bs, data);
+        return null;
+    }
+
+    *out_size = to_read;
+    return data;
+}
+
+public file_protocol* open_root_for_handle(boot_services_table* bs, void* device_handle) {
+    guid p = simple_file_system_protocol;
+    simple_file_system_protocol_t* sfs = handle_protocol(bs, device_handle, &p) as simple_file_system_protocol_t*;
+    if sfs == null {
+        return null;
+    }
+
+    return open_volume(sfs);
+}

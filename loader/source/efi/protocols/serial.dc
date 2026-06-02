@@ -1,0 +1,97 @@
+module efi::protocols::serial;
+
+public import efi;
+public import efi::boot_services;
+
+public const guid serial_io_protocol = {0xbb25cf6f, 0xf1d4, 0x11d2, {0x9a, 0x0c, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0xfd}};
+
+public const u32 SERIAL_IO_REVISION = 0x00010000;
+
+public enum parity_type {
+    DefaultParity,
+    NoParity,
+    EvenParity,
+    OddParity,
+    MarkParity,
+    SpaceParity
+}
+
+public enum stop_bits_type {
+    DefaultStopBits,
+    OneStopBit,
+    OneFiveStopBits,
+    TwoStopBits
+}
+
+public struct serial_io_mode {
+    u32 control_mask;
+    u32 timeout;
+    u64 baud_rate;
+    u32 receive_fifo_depth;
+    u32 data_bits;
+    u32 parity;
+    u32 stop_bits;
+}
+
+public using serial_reset = u64(*)(serial_io_protocol_t*);
+public using serial_set_attrs = u64(*)(serial_io_protocol_t*, u64, u32, u32, parity_type, u32, stop_bits_type);
+public using serial_set_ctrl = u64(*)(serial_io_protocol_t*, u32);
+public using serial_get_ctrl = u64(*)(serial_io_protocol_t*, u32*);
+public using serial_write = u64(*)(serial_io_protocol_t*, u64*, void*);
+public using serial_read = u64(*)(serial_io_protocol_t*, u64*, void*);
+
+public struct serial_io_protocol_t {
+    u32 revision;
+    serial_reset reset;
+    serial_set_attrs set_attributes;
+    serial_set_ctrl set_control;
+    serial_get_ctrl get_control;
+    serial_write write_bytes;
+    serial_read read;
+    serial_io_mode* mode;
+}
+
+public serial_io_protocol_t* get(boot_services::boot_services_table* bs) {
+    guid p = serial_io_protocol;
+    return boot_services::locate_protocol(bs, &p) as serial_io_protocol_t*;
+}
+
+public u64 configure(serial_io_protocol_t* s) {
+    return s.set_attributes(s, 115200, 0, 0, parity_type::NoParity, 8, stop_bits_type::OneStopBit);
+}
+
+public u64 write_bytes(serial_io_protocol_t* s, void* buf, u64 len) {
+    u64 sz = len;
+
+    return s.write_bytes(s, &sz, buf);
+}
+
+public u64 read_bytes(serial_io_protocol_t* s, void* buf, u64 len) {
+    u64 sz = len;
+
+    return s.read(s, &sz, buf);
+}
+
+public u64 write_byte(serial_io_protocol_t* s, u8 b) {
+    u8[1] buf;
+    buf[0] = b;
+    u64 sz = 1;
+
+    return s.write_bytes(s, &sz, buf as void*);
+}
+
+public u64 read_byte(serial_io_protocol_t* s, u8* b) {
+    u64 sz = 1;
+
+    return s.read(s, &sz, b as void*);
+}
+
+public void write(serial_io_protocol_t* s, char c) {
+    write_byte(s, c as u8);
+}
+
+public void write(serial_io_protocol_t* s, []const char c) {
+    u64 sz = c.len;
+
+    s.write_bytes(s, &sz, c.ptr as const void*);
+}

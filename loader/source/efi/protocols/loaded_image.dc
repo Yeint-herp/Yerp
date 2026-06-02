@@ -1,0 +1,32 @@
+module efi::protocols::loaded_image;
+
+public import efi;
+public import efi::boot_services;
+
+public const guid loaded_image_protocol = {0x5b1b31a1, 0x9562, 0x11d2, {0x8e, 0x3f, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+public const guid loaded_image_device_path_protocol = {0xbc62157e, 0x3e33, 0x4fec, {0x99, 0x20, 0x2d, 0x3b, 0x36, 0xd7, 0x50, 0xdf}};
+
+public struct loaded_image_protocol_t {
+    u32 revision;
+    void* parent_handle;
+    void* system_table;
+
+    void* device_handle;
+    boot_services::device_path_protocol* file_path;
+    void* reserved;
+
+    u32 load_options_size;
+    void* load_options;
+
+    void* image_base;
+    u64 image_size;
+    boot_services::memory_type image_code_type;
+    boot_services::memory_type image_data_type;
+
+    u64(*)(void*) unload;
+}
+
+public loaded_image_protocol_t* get(boot_services::boot_services_table* bs, void* image_handle) {
+    guid p = loaded_image_protocol;
+    return boot_services::handle_protocol(bs, image_handle, &p) as loaded_image_protocol_t*;
+}
