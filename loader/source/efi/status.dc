@@ -1,0 +1,60 @@
+module efi::status;
+
+public const u64 ERROR_BIT = 0x8000000000000000;
+
+public enum status : u64 {
+    Success = 0,
+
+    WarnUnknownGlyph = 1,
+    WarnDeleteFailure = 2,
+    WarnWriteFailure = 3,
+    WarnBufferTooSmall = 4,
+    WarnStaleData = 5,
+    WarnFileSystem = 6,
+    WarnResetRequired = 7,
+
+    LoadError = 0x8000000000000001,
+    InvalidParameter = 0x8000000000000002,
+    Unsupported = 0x8000000000000003,
+    BadBufferSize = 0x8000000000000004,
+    BufferTooSmall = 0x8000000000000005,
+    NotReady = 0x8000000000000006,
+    DeviceError = 0x8000000000000007,
+    WriteProtected = 0x8000000000000008,
+    OutOfResources = 0x8000000000000009,
+    VolumeCorrupted = 0x800000000000000a,
+    VolumeFull = 0x800000000000000b,
+    NoMedia = 0x800000000000000c,
+    MediaChanged = 0x800000000000000d,
+    NotFound = 0x800000000000000e,
+    AccessDenied = 0x800000000000000f,
+    NoResponse = 0x8000000000000010,
+    NoMapping = 0x8000000000000011,
+    Timeout = 0x8000000000000012,
+    NotStarted = 0x8000000000000013,
+    AlreadyStarted = 0x8000000000000014,
+    Aborted = 0x8000000000000015,
+    IcmpError = 0x8000000000000016,
+    TftpError = 0x8000000000000017,
+    ProtocolError = 0x8000000000000018,
+    IncompatibleVersion = 0x8000000000000019,
+    SecurityViolation = 0x800000000000001a,
+    CrcError = 0x800000000000001b,
+    EndOfMedia = 0x800000000000001c,
+    EndOfFile = 0x80000000000001f,
+    InvalidLanguage = 0x8000000000000020,
+    CompromisedData = 0x8000000000000021,
+    HttpError = 0x8000000000000023
+}
+
+public bool is_error(u64 s) {
+    return (s & ERROR_BIT) != 0;
+}
+
+public bool is_success(u64 s) {
+    return s == 0;
+}
+
+public bool is_warning(u64 s) {
+    return s != 0 && (s & ERROR_BIT) == 0;
+}
