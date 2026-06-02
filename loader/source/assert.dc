@@ -1,17 +1,29 @@
 module assert;
 
 import entry;
+import efi;
 import dbg::print;
 
+void write_assert_to(
+    efi::protocols::console::simple_text_output* out,
+    []const char file,
+    i32 line,
+    []const char function,
+    []const char expr
+) {
+    out.write(file);
+    out.write(":");
+    out.print(line as u64);
+    out.write(" ");
+    out.write(function);
+    out.write(": Assertion `");
+    out.write(expr);
+    out.write("` failed.\r\n");
+}
+
 void __assert([]const char file, i32 line, []const char function, []const char expr) {
-    entry::st.console_err.write(file);
-    entry::st.console_err.write(":");
-    entry::st.console_err.print(line as u64);
-    entry::st.console_err.write(" ");
-    entry::st.console_err.write(function);
-    entry::st.console_err.write(": Assertion `");
-    entry::st.console_err.write(expr);
-    entry::st.console_err.write("` failed.\n");
+    write_assert_to(entry::st.console_out, file, line, function, expr);
+    write_assert_to(entry::st.console_err, file, line, function, expr);
 
     for ;; {}
 }
