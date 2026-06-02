@@ -79,8 +79,35 @@ public struct simple_text_output_mode {
     bool cursor_visible;
 }
 
-public u64 write(simple_text_output* self, const u16* str) {
-    return self.output_string(self, str);
+public u64 write(simple_text_output* self, []const u16 str) {
+    return self.output_string(self, str.ptr);
+}
+
+public u64 write(simple_text_output* self, []const char str) {
+    const u64 max_len = str.len * 2;
+    u16[max_len + 1] buf;
+
+    u64 i = 0;
+    u64 limit = if str.len < max_len { str.len } else { max_len };
+    while (i < limit) {
+        buf[i] = str[i] as u16;
+        i++;
+    }
+
+    buf[i] = 0;
+    return self.output_string(self, buf as const u16*);
+}
+
+public u64 write(simple_text_output* self, const char ch) {
+    []const char str = {ch};
+
+    return self.write(str);
+}
+
+public u64 write(simple_text_output* self, const u16 ch) {
+    []const u16 str = {ch};
+
+    return self.write(str);
 }
 
 public u64 clear(simple_text_output* self) {

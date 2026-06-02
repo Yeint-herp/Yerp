@@ -32,14 +32,14 @@ public struct system_table {
     u32 _pad0;
 
     handle console_in_handle;
-    efi::protocols::console::simple_text_input* console_in;
+    protocols::console::simple_text_input* console_in;
     handle console_out_handle;
-    efi::protocols::console::simple_text_output* console_out;
+    protocols::console::simple_text_output* console_out;
     handle console_err_handle;
-    efi::protocols::console::simple_text_output* console_err;
+    protocols::console::simple_text_output* console_err;
 
-    efi::runtime_services::runtime_service_table* runtime_services;
-    efi::boot_services::boot_services_table* boot_services;
+    runtime_services::runtime_service_table* runtime_services;
+    boot_services::boot_services_table* boot_services;
 
     u64 table_entry_count;
     void*[] configuration_table;
