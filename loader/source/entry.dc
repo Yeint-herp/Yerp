@@ -9,9 +9,6 @@ public efi::system_table* st = null;
 void efi_main(efi::handle image_handle, efi::system_table* system_table) {
     st = system_table;
     st.console_out.clear();
-    st.console_out.write(u"Hello World\r\n");
-
-    st.console_out.println("Advanced hello {}", {"world"});
 
     for ;; {
 

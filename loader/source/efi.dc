@@ -1,8 +1,12 @@
 module efi;
 
 public import efi::protocols::console;
+public import efi::protocols::loaded_image;
+public import efi::protocols::file;
+public import efi::protocols::serial;
 public import efi::runtime_services;
 public import efi::boot_services;
+public import efi::status;
 
 public using handle = void*;
 public using event = handle;
