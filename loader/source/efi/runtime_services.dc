@@ -1,5 +1,124 @@
 module efi::runtime_services;
 
-public struct runtime_service_table {
+public import efi;
+public import efi::status;
 
+public enum reset_type {
+    Cold,
+    Warm,
+    Shutdown,
+    PlatformSpecific
+}
+
+public struct time {
+    u16 year;
+    u8 month;
+    u8 day;
+    u8 hour;
+    u8 minute;
+    u8 second;
+    u8 _pad1;
+    u32 nanosecond;
+    i16 time_zone;
+    u8 daylight;
+    u8 _pad2;
+}
+
+public struct time_capabilities {
+    u32 resolution;
+    u32 accuracy;
+    bool sets_to_zero;
+}
+
+public const u32 VARIABLE_NON_VOLATILE = 0x00000001;
+public const u32 VARIABLE_BOOTSERVICE_ACCESS = 0x00000002;
+public const u32 VARIABLE_RUNTIME_ACCESS = 0x00000004;
+public const u32 VARIABLE_HARDWARE_ERROR_RECORD = 0x00000008;
+public const u32 VARIABLE_AUTHENTICATED_WRITE_ACCESS = 0x00000010;
+public const u32 VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS = 0x00000020;
+public const u32 VARIABLE_APPEND_WRITE = 0x00000040;
+
+public struct capsule_header {
+    guid capsule_guid;
+    u32 header_size;
+    u32 flags;
+    u32 capsule_image_size;
+}
+
+public using get_time = u64(*)(time*, time_capabilities*);
+public using set_time = u64(*)(time*);
+public using get_wakeup_time = u64(*)(bool*, bool*, time*);
+public using set_wakeup_time = u64(*)(bool, time*);
+
+public using set_virtual_address_map = u64(*)(u64, u64, u32, void*);
+public using convert_pointer = u64(*)(u64, void**);
+
+public using get_variable = u64(*)(u16*, guid*, u32*, u64*, void*);
+public using get_next_variable_name = u64(*)(u64*, u16*, guid*);
+public using set_variable = u64(*)(u16*, guid*, u32, u64, void*);
+
+public using get_next_high_monotonic_count = u64(*)(u32*);
+public using reset_system = void(*)(reset_type, u64, u64, void*);
+
+public using update_capsule = u64(*)(capsule_header**, u64, u64);
+public using query_capsule_capabilities = u64(*)(capsule_header**, u64, u64*, reset_type*);
+public using query_variable_info = u64(*)(u32, u64*, u64*, u64*);
+
+public struct runtime_service_table {
+    table_header header;
+
+    get_time get_time;
+    set_time set_time;
+    get_wakeup_time get_wakeup_time;
+    set_wakeup_time set_wakeup_time;
+
+    set_virtual_address_map set_virtual_address_map;
+    convert_pointer convert_pointer;
+
+    get_variable get_variable;
+    get_next_variable_name get_next_variable_name;
+    set_variable set_variable;
+
+    get_next_high_monotonic_count get_next_high_monotonic_count;
+    reset_system reset_system;
+
+    update_capsule update_capsule;
+    query_capsule_capabilities query_capsule_capabilities;
+    query_variable_info query_variable_info;
+}
+
+public status::status get_time(runtime_service_table* rt, time* t) {
+    return rt.get_time(t, null) as status::status;
+}
+
+public status::status get_time_with_caps(runtime_service_table* rt, time* t, time_capabilities* caps) {
+    return rt.get_time(t, caps) as status::status;
+}
+
+public status::status set_time(runtime_service_table* rt, time* t) {
+    return rt.set_time(t) as status::status;
+}
+
+public void reset(runtime_service_table* rt, reset_type kind) {
+    rt.reset_system(kind, 0, 0, null);
+}
+
+public void reset_with_data(runtime_service_table* rt, reset_type kind, u64 status, u64 data_size, void* data) {
+    rt.reset_system(kind, status, data_size, data);
+}
+
+public status::status get_variable(runtime_service_table* rt, u16* name, guid* vendor, u32* attributes, u64* data_size, void* data) {
+    return rt.get_variable(name, vendor, attributes, data_size, data) as status::status;
+}
+
+public status::status set_variable(runtime_service_table* rt, u16* name, guid* vendor, u32 attributes, u64 data_size, void* data) {
+    return rt.set_variable(name, vendor, attributes, data_size, data) as status::status;
+}
+
+public status::status get_next_variable_name(runtime_service_table* rt, u64* name_size, u16* name, guid* vendor) {
+    return rt.get_next_variable_name(name_size, name, vendor) as status::status;
+}
+
+public status::status query_variable_info(runtime_service_table* rt, u32 attributes, u64* max_storage, u64* remaining_storage, u64* max_size) {
+    return rt.query_variable_info(attributes, max_storage, remaining_storage, max_size) as status::status;
 }

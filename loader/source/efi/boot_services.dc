@@ -1,6 +1,7 @@
 module efi::boot_services;
 
 public import efi;
+public import efi::status;
 
 public enum timer_delay {
     TimerCancel,
@@ -177,9 +178,9 @@ public struct memory_map {
 public void* allocate_pool(boot_services_table* bs, memory_type pool_type, u64 size) 
 {
     void* buffer;
-    u64 status = bs.allocate_pool(pool_type, size, &buffer);
+    status::status status = bs.allocate_pool(pool_type, size, &buffer) as status::status;
 
-    if status != 0 {
+    if status != status::status::Success {
         return null; 
     }
 
@@ -195,7 +196,6 @@ public void* allocate_pool_zeroed(boot_services_table* bs, memory_type pool_type
     bs.set_mem(buffer, size, 0);
     return buffer;
 }
-
 
 public void free_pool(boot_services_table* bs, void* buffer) 
 {
@@ -215,9 +215,9 @@ public void set_mem(boot_services_table* bs, void* buffer, u64 size, u8 value)
 public void* locate_protocol(boot_services_table* bs, guid* protocol) 
 {
     void* interface;
-    u64 status = bs.locate_protocol(protocol, null, &interface);
+    status::status status = bs.locate_protocol(protocol, null, &interface) as status::status;
 
-    if status != 0 {
+    if status != status::status::Success {
         return null;
     }
 
@@ -227,9 +227,9 @@ public void* locate_protocol(boot_services_table* bs, guid* protocol)
 public void* handle_protocol(boot_services_table* bs, void* handle, guid* protocol) 
 {
     void* interface;
-    u64 status = bs.handle_protocol(handle, protocol, &interface);
+    status::status status = bs.handle_protocol(handle, protocol, &interface) as status::status;
 
-    if status != 0 {
+    if status != status::status::Success {
         return null;
     }
 
@@ -241,30 +241,30 @@ public void stall(boot_services_table* bs, u64 microseconds)
     bs.stall(microseconds);
 }
 
-public u64 set_timer(boot_services_table* bs, void* event, timer_delay delay_type, u64 trigger_time) 
+public status::status set_timer(boot_services_table* bs, void* event, timer_delay delay_type, u64 trigger_time) 
 {
-    return bs.set_timer(event, delay_type, trigger_time);
+    return bs.set_timer(event, delay_type, trigger_time) as status::status;
 }
 
-public u64 wait_for_event(boot_services_table* bs, u64 number_of_events, void** events, u64* index) 
+public status::status wait_for_event(boot_services_table* bs, u64 number_of_events, void** events, u64* index) 
 {
-    return bs.wait_for_event(number_of_events, events, index);
+    return bs.wait_for_event(number_of_events, events, index) as status::status;
 }
 
-public u64 exit(boot_services_table* bs, void* image_handle, u64 map_key) 
+public status::status exit(boot_services_table* bs, void* image_handle, u64 map_key) 
 {
-    return bs.exit_boot_services(image_handle, map_key);
+    return bs.exit_boot_services(image_handle, map_key) as status::status;
 }
 
-public u64 allocate_pages(boot_services_table* bs, allocate_type kind, memory_type mem_type, u64 pages, u64* address) {
-    return bs.allocate_pages(kind, mem_type, pages, address);
+public status::status allocate_pages(boot_services_table* bs, allocate_type kind, memory_type mem_type, u64 pages, u64* address) {
+    return bs.allocate_pages(kind, mem_type, pages, address) as status::status;
 }
 
-public u64 free_pages(boot_services_table* bs, u64 address, u64 pages) {
-    return bs.free_pages(address, pages);
+public status::status free_pages(boot_services_table* bs, u64 address, u64 pages) {
+    return bs.free_pages(address, pages) as status::status;
 }
 
-public u64 get_memory_map(boot_services_table* bs, memory_map* out) {
+public status::status get_memory_map(boot_services_table* bs, memory_map* out) {
     out.map = null;
     out.map_size = 0;
     out.map_key = 0;
@@ -272,9 +272,9 @@ public u64 get_memory_map(boot_services_table* bs, memory_map* out) {
     out.descriptor_version = 0;
 
     u64 size = 0;
-    u64 status = bs.get_memory_map(&size, null, &out.map_key, &out.descriptor_size, &out.descriptor_version);
+    status::status status = bs.get_memory_map(&size, null, &out.map_key, &out.descriptor_size, &out.descriptor_version) as status::status;
 
-    if status != 0x8000000000000005 && status != 0 {
+    if status != status::status::BufferTooSmall && status != status::status::Success {
         return status;
     }
 
@@ -285,20 +285,20 @@ public u64 get_memory_map(boot_services_table* bs, memory_map* out) {
     while attempts < 5 {
         out.map = allocate_pool(bs, memory_type::LoaderData, alloc_size) as memory_descriptor*;
         if out.map == null {
-            return 0x8000000000000009;
+            return status::status::OutOfResources;
         }
 
         out.map_size = alloc_size;
-        status = bs.get_memory_map(&out.map_size, out.map, &out.map_key, &out.descriptor_size, &out.descriptor_version);
+        status = bs.get_memory_map(&out.map_size, out.map, &out.map_key, &out.descriptor_size, &out.descriptor_version) as status::status;
 
-        if status == 0 {
-            return 0;
+        if status == status::status::Success {
+            return status::status::Success;
         }
 
         free_pool(bs, out.map as void*);
         out.map = null;
 
-        if status != 0x8000000000000005 {
+        if status != status::status::BufferTooSmall {
             return status;
         }
 
@@ -306,7 +306,7 @@ public u64 get_memory_map(boot_services_table* bs, memory_map* out) {
         attempts++;
     }
 
-    return 0x8000000000000012;
+    return status::status::Timeout;
 }
 
 public void free_memory_map(boot_services_table* bs, memory_map* m) {
@@ -316,37 +316,37 @@ public void free_memory_map(boot_services_table* bs, memory_map* m) {
     }
 }
 
-public u64 exit_boot_services(boot_services_table* bs, void* image_handle, memory_map* current_map) {
-    u64 status = bs.exit_boot_services(image_handle, current_map.map_key);
-    if status == 0 {
-        return 0;
+public status::status exit_boot_services(boot_services_table* bs, void* image_handle, memory_map* current_map) {
+    status::status status = bs.exit_boot_services(image_handle, current_map.map_key) as status::status;
+    if status == status::status::Success {
+        return status::status::Success;
     }
 
     free_memory_map(bs, current_map);
-    u64 r = get_memory_map(bs, current_map);
-    if r != 0 {
+    status::status r = get_memory_map(bs, current_map);
+    if r != status::status::Success {
         return r;
     }
 
-    return bs.exit_boot_services(image_handle, current_map.map_key);
+    return bs.exit_boot_services(image_handle, current_map.map_key) as status::status;
 }
 
-public u64 create_event(boot_services_table* bs, u32 type, u64 notify_tpl, event_notify notify_fn, void* notify_ctx, void** out_event) {
-    return bs.create_event(type, notify_tpl, notify_fn, notify_ctx, out_event);
+public status::status create_event(boot_services_table* bs, u32 type, u64 notify_tpl, event_notify notify_fn, void* notify_ctx, void** out_event) {
+    return bs.create_event(type, notify_tpl, notify_fn, notify_ctx, out_event) as status::status;
 }
 
-public u64 close_event(boot_services_table* bs, void* event) {
-    return bs.close_event(event);
+public status::status close_event(boot_services_table* bs, void* event) {
+    return bs.close_event(event) as status::status;
 }
 
-public u64 signal_event(boot_services_table* bs, void* event) {
-    return bs.signal_event(event);
+public status::status signal_event(boot_services_table* bs, void* event) {
+    return bs.signal_event(event) as status::status;
 }
 
-public u64 check_event(boot_services_table* bs, void* event) {
-    return bs.check_event(event);
+public status::status check_event(boot_services_table* bs, void* event) {
+    return bs.check_event(event) as status::status;
 }
 
-public u64 locate_handle_buffer(boot_services_table* bs, locate_search_type kind, guid* protocol, u64* count, void*** handles) {
-    return bs.locate_handle_buffer(kind, protocol, null, count, handles);
+public status::status locate_handle_buffer(boot_services_table* bs, locate_search_type kind, guid* protocol, u64* count, void*** handles) {
+    return bs.locate_handle_buffer(kind, protocol, null, count, handles) as status::status;
 }
