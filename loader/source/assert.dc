@@ -1,0 +1,17 @@
+module assert;
+
+import entry;
+import dbg::print;
+
+void __assert([]const char file, i32 line, []const char function, []const char expr) {
+    entry::st.console_err.write(file);
+    entry::st.console_err.write(":");
+    entry::st.console_err.print(line as u64);
+    entry::st.console_err.write(" ");
+    entry::st.console_err.write(function);
+    entry::st.console_err.write(": Assertion `");
+    entry::st.console_err.write(expr);
+    entry::st.console_err.write("` failed.\n");
+
+    for ;; {}
+}
